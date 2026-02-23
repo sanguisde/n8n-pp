@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Hide from Dock - menu bar only app -->
+    <key>LSUIElement</key>
+    <true/>
+
+    <!-- App name -->
+    <key>CFBundleName</key>
+    <string>TimeAudit</string>
+
+    <!-- Bundle identifier -->
+    <key>CFBundleIdentifier</key>
+    <string>com.timeaudit.app</string>
+
+    <!-- Version -->
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+
+    <!-- Build number -->
+    <key>CFBundleVersion</key>
+    <string>1</string>
+
+    <!-- Minimum macOS version -->
+    <key>LSMinimumSystemVersion</key>
+    <string>14.0</string>
+
+    <!-- App category -->
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.productivity</string>
+</dict>
+</plist>
