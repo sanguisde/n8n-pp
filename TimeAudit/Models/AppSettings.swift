@@ -15,14 +15,19 @@ final class AppSettings {
     /// Custom category names (empty = use defaults)
     var customCategories: [String]
 
+    /// Whether the desktop widget is visible
+    var widgetEnabled: Bool
+
     init(
         intervalMinutes: Int = 15,
         soundEnabled: Bool = true,
-        customCategories: [String] = []
+        customCategories: [String] = [],
+        widgetEnabled: Bool = true
     ) {
         self.intervalMinutes = intervalMinutes
         self.soundEnabled = soundEnabled
         self.customCategories = customCategories
+        self.widgetEnabled = widgetEnabled
     }
 
     /// Available interval options

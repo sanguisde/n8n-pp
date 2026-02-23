@@ -25,11 +25,16 @@ struct SettingsView: View {
                 Toggle("Benachrichtigungston", isOn: $settingsVM.soundEnabled)
             }
 
-            // Launch at Login
+            // System
             Section("System") {
                 Toggle("Bei Anmeldung starten", isOn: $settingsVM.launchAtLogin)
                     .onChange(of: settingsVM.launchAtLogin) {
                         settingsVM.toggleLaunchAtLogin()
+                    }
+
+                Toggle("Desktop Widget anzeigen", isOn: $settingsVM.widgetEnabled)
+                    .onChange(of: settingsVM.widgetEnabled) {
+                        settingsVM.save(context: modelContext)
                     }
             }
 

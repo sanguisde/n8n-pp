@@ -19,6 +19,9 @@ final class SettingsViewModel {
     /// Custom categories (empty = use defaults)
     var customCategories: [String] = []
 
+    /// Whether the desktop widget is visible
+    var widgetEnabled: Bool = true
+
     /// Load settings from SwiftData
     func load(context: ModelContext) {
         let descriptor = FetchDescriptor<AppSettings>()
@@ -26,6 +29,7 @@ final class SettingsViewModel {
             intervalMinutes = settings.intervalMinutes
             soundEnabled = settings.soundEnabled
             customCategories = settings.customCategories
+            widgetEnabled = settings.widgetEnabled
         }
 
         // Read launch at login status from SMAppService
@@ -49,6 +53,7 @@ final class SettingsViewModel {
         settings.intervalMinutes = intervalMinutes
         settings.soundEnabled = soundEnabled
         settings.customCategories = customCategories
+        settings.widgetEnabled = widgetEnabled
     }
 
     /// Toggle launch at login

@@ -9,6 +9,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The floating logging popup panel
     private var loggingPanel: FloatingPanel<AnyView>?
 
+    /// Always-on-top desktop widget for quick logging
+    private var widgetPanel: FloatingWidget?
+
     /// Sleep/wake monitor
     let sleepWakeMonitor = SleepWakeMonitor()
 
@@ -49,6 +52,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.timerVM.handleWake()
         }
         sleepWakeMonitor.start()
+
+        // Show desktop widget if enabled
+        if settingsVM.widgetEnabled {
+            showWidget()
+        }
 
         // Register global keyboard shortcut (Cmd+Shift+T)
         NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
@@ -187,6 +195,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.contentView = NSHostingView(rootView: content)
         window.center()
         return window
+    }
+
+    // MARK: - Desktop Widget
+
+    /// Show the always-on-top desktop widget
+    func showWidget() {
+        guard let container = modelContainer else { return }
+
+        if let existing = widgetPanel {
+            existing.present()
+            return
+        }
+
+        let view = FloatingWidgetView(
+            timerVM: timerVM,
+            statsVM: statsVM,
+            settingsVM: settingsVM
+        )
+        .modelContainer(container)
+
+        widgetPanel = FloatingWidget(contentView: view)
+        widgetPanel?.present()
+    }
+
+    /// Hide the desktop widget
+    func hideWidget() {
+        widgetPanel?.hideWidget()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
