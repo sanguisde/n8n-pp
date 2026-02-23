@@ -122,19 +122,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Reusable windows so we don't create duplicates
+    private var statisticsWindow: NSWindow?
+    private var settingsWindow: NSWindow?
+
     /// Show the statistics window
     func showStatisticsWindow() {
         guard let container = modelContainer else { return }
 
+        if let existing = statisticsWindow, existing.isVisible {
+            existing.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
         let view = StatisticsView(statsVM: statsVM)
             .modelContainer(container)
+            .preferredColorScheme(.dark)
 
-        let panel = FloatingPanel(contentView: AnyView(view))
-        panel.canDismiss = true
-        panel.title = "TimeAudit - Statistiken"
-        panel.setContentSize(NSSize(width: 500, height: 480))
-        panel.center()
-        panel.makeKeyAndOrderFront(nil)
+        let window = createStandardWindow(
+            title: "TimeAudit - Statistiken",
+            size: NSSize(width: 500, height: 480),
+            content: view
+        )
+        statisticsWindow = window
+        window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 
@@ -142,16 +154,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func showSettingsWindow() {
         guard let container = modelContainer else { return }
 
+        if let existing = settingsWindow, existing.isVisible {
+            existing.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
         let view = SettingsView(settingsVM: settingsVM)
             .modelContainer(container)
+            .preferredColorScheme(.dark)
 
-        let panel = FloatingPanel(contentView: AnyView(view))
-        panel.canDismiss = true
-        panel.title = "TimeAudit - Einstellungen"
-        panel.setContentSize(NSSize(width: 420, height: 500))
-        panel.center()
-        panel.makeKeyAndOrderFront(nil)
+        let window = createStandardWindow(
+            title: "TimeAudit - Einstellungen",
+            size: NSSize(width: 420, height: 500),
+            content: view
+        )
+        settingsWindow = window
+        window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    /// Create a normal, interactive NSWindow with opaque background for standard views
+    private func createStandardWindow(title: String, size: NSSize, content: some View) -> NSWindow {
+        let window = NSWindow(
+            contentRect: NSRect(origin: .zero, size: size),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = title
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: content)
+        window.center()
+        return window
     }
 
     func applicationWillTerminate(_ notification: Notification) {
