@@ -21,14 +21,18 @@ struct StreakBadge: View {
             }
             Text("\(days) \(days == 1 ? "Tag" : "Tage")")
                 .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(days > 0 ? .orange : .secondary)
+                .foregroundStyle(days > 0 ? .orange : ThemeColors.textTertiary)
             Text(label)
                 .font(.system(size: 10))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(ThemeColors.textTertiary)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(Color.orange.opacity(days > 0 ? 0.15 : 0.05))
+        .background(days > 0 ? Color.orange.opacity(0.12) : ThemeColors.cardBackground)
         .clipShape(Capsule())
+        .overlay(
+            Capsule()
+                .stroke(days > 0 ? Color.orange.opacity(0.25) : ThemeColors.subtleBorder, lineWidth: 0.5)
+        )
     }
 }

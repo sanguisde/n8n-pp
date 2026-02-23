@@ -4,7 +4,7 @@ import SwiftData
 // MARK: - Floating Widget View
 
 /// Compact always-on-top widget for quick time logging.
-/// Categories are always visible as icon buttons - one click to log.
+/// Note is mandatory - user types a note first, then clicks a category to save.
 struct FloatingWidgetView: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var timerVM: TimerViewModel
@@ -14,14 +14,19 @@ struct FloatingWidgetView: View {
     @State private var noteText: String = ""
     @State private var savedCategory: ActivityCategory?
     @State private var showConfirmation: Bool = false
+    @State private var noteShake: Bool = false
+    @FocusState private var isNoteFocused: Bool
 
-    /// All categories split into two rows for compact grid
     private let topRow: [ActivityCategory] = [
         .revenueGenerating, .strategisch, .deepWork, .admin, .konsum, .ablenkung
     ]
     private let bottomRow: [ActivityCategory] = [
         .pause, .training, .schlaf, .beziehung, .sonstiges
     ]
+
+    private var noteIsValid: Bool {
+        !noteText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -31,42 +36,46 @@ struct FloatingWidgetView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 6)
 
-            Divider().opacity(0.3)
+            separator
 
-            // Category grid - always visible, one tap to log
-            categoryGrid
-                .padding(.horizontal, 6)
-                .padding(.vertical, 6)
-
-            Divider().opacity(0.3)
-
-            // Note input + save
+            // Note input (mandatory, above categories)
             noteRow
                 .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+
+            separator
+
+            // Category grid
+            categoryGrid
+                .padding(.horizontal, 6)
                 .padding(.vertical, 6)
         }
         .frame(width: 240)
         .overlay(confirmationOverlay)
     }
 
+    private var separator: some View {
+        Rectangle()
+            .fill(ThemeColors.subtleBorder)
+            .frame(height: 0.5)
+    }
+
     // MARK: - Header
 
     private var headerRow: some View {
         HStack(spacing: 6) {
-            // Timer
             Image(systemName: "clock")
                 .font(.system(size: 10))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(ThemeColors.textTertiary)
             Text(timerLabel)
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(ThemeColors.textSecondary)
 
             Spacer()
 
-            // Focus Score
             Text("Score")
                 .font(.system(size: 9))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(ThemeColors.textTertiary)
             Text("\(statsVM.todayFocusScore)")
                 .font(.system(size: 13, weight: .bold, design: .rounded))
                 .foregroundStyle(scoreColor)
@@ -82,9 +91,43 @@ struct FloatingWidgetView: View {
     private var scoreColor: Color {
         let s = statsVM.todayFocusScore
         if s >= 75 { return .green }
-        if s >= 50 { return .blue }
+        if s >= 50 { return ThemeColors.accent }
         if s >= 25 { return .orange }
         return .red
+    }
+
+    // MARK: - Note Row
+
+    private var noteRow: some View {
+        VStack(spacing: 3) {
+            HStack(spacing: 4) {
+                TextField("Notiz *", text: $noteText)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 11))
+                    .foregroundStyle(ThemeColors.textPrimary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 4)
+                    .background(ThemeColors.inputBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 5))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 5)
+                            .stroke(
+                                noteShake ? ThemeColors.dangerAccent : (noteIsValid ? ThemeColors.accent.opacity(0.3) : ThemeColors.subtleBorder),
+                                lineWidth: noteShake ? 1.5 : 0.5
+                            )
+                    )
+                    .focused($isNoteFocused)
+                    .offset(x: noteShake ? -4 : 0)
+                    .animation(.default.repeatCount(3, autoreverses: true).speed(6), value: noteShake)
+            }
+            if !noteIsValid {
+                Text("Pflichtfeld")
+                    .font(.system(size: 8))
+                    .foregroundStyle(ThemeColors.dangerAccent.opacity(0.7))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.leading, 2)
+            }
+        }
     }
 
     // MARK: - Category Grid
@@ -107,36 +150,30 @@ struct FloatingWidgetView: View {
 
     private func categoryIcon(_ category: ActivityCategory) -> some View {
         Button {
-            logCategory(category)
+            if noteIsValid {
+                logCategory(category)
+            } else {
+                triggerNoteShake()
+            }
         } label: {
             VStack(spacing: 2) {
                 Image(systemName: category.sfSymbol)
                     .font(.system(size: 14))
-                    .foregroundStyle(category.color)
+                    .foregroundStyle(noteIsValid ? category.color : category.color.opacity(0.35))
                 Text(category.shortcutKey)
                     .font(.system(size: 8, weight: .medium, design: .monospaced))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(ThemeColors.textTertiary)
             }
             .frame(width: 34, height: 34)
-            .background(Color.white.opacity(0.06))
+            .background(ThemeColors.cardBackground)
             .clipShape(RoundedRectangle(cornerRadius: 6))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(ThemeColors.subtleBorder, lineWidth: 0.5)
+            )
         }
         .buttonStyle(.plain)
         .help(category.rawValue)
-    }
-
-    // MARK: - Note Row
-
-    private var noteRow: some View {
-        HStack(spacing: 4) {
-            TextField("Notiz...", text: $noteText)
-                .textFieldStyle(.plain)
-                .font(.system(size: 11))
-                .padding(.horizontal, 6)
-                .padding(.vertical, 4)
-                .background(Color.white.opacity(0.06))
-                .clipShape(RoundedRectangle(cornerRadius: 5))
-        }
     }
 
     // MARK: - Confirmation Overlay
@@ -153,7 +190,7 @@ struct FloatingWidgetView: View {
                         .foregroundStyle(.white)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.black.opacity(0.75))
+                .background(ThemeColors.background.opacity(0.88))
                 .clipShape(RoundedRectangle(cornerRadius: 14))
                 .transition(.opacity)
             }
@@ -167,29 +204,33 @@ struct FloatingWidgetView: View {
         let entry = TimeEntry(
             timestamp: .now,
             category: category.rawValue,
-            note: noteText.isEmpty ? nil : noteText,
+            note: noteText.trimmingCharacters(in: .whitespaces),
             intervalMinutes: settingsVM.intervalMinutes
         )
         modelContext.insert(entry)
         UserDefaults.standard.set(category.rawValue, forKey: "lastCategory")
 
-        // Show confirmation
         savedCategory = category
         showConfirmation = true
         noteText = ""
 
-        // Hide confirmation after 0.8 seconds
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
             showConfirmation = false
         }
 
-        // Reset timer since user just logged
         timerVM.didLog()
 
-        // Refresh stats
         let descriptor = FetchDescriptor<TimeEntry>()
         if let entries = try? modelContext.fetch(descriptor) {
             statsVM.refresh(entries: entries)
+        }
+    }
+
+    private func triggerNoteShake() {
+        noteShake = true
+        isNoteFocused = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            noteShake = false
         }
     }
 }

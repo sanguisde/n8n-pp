@@ -14,7 +14,6 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            // Timer section
             Section("Timer") {
                 Picker("Intervall", selection: $settingsVM.intervalMinutes) {
                     ForEach(settingsVM.intervalOptions, id: \.self) { option in
@@ -25,7 +24,6 @@ struct SettingsView: View {
                 Toggle("Benachrichtigungston", isOn: $settingsVM.soundEnabled)
             }
 
-            // System
             Section("System") {
                 Toggle("Bei Anmeldung starten", isOn: $settingsVM.launchAtLogin)
                     .onChange(of: settingsVM.launchAtLogin) {
@@ -38,15 +36,15 @@ struct SettingsView: View {
                     }
             }
 
-            // Categories
             Section("Kategorien") {
                 Text("Standard-Kategorien sind immer verfuegbar. Hier kannst du weitere hinzufuegen.")
                     .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(ThemeColors.textTertiary)
 
                 ForEach(settingsVM.customCategories, id: \.self) { category in
                     HStack {
                         Text(category)
+                            .foregroundStyle(ThemeColors.textPrimary)
                         Spacer()
                         Button(role: .destructive) {
                             settingsVM.customCategories.removeAll { $0 == category }
@@ -54,6 +52,7 @@ struct SettingsView: View {
                         } label: {
                             Image(systemName: "trash")
                                 .font(.system(size: 11))
+                                .foregroundStyle(ThemeColors.dangerAccent)
                         }
                         .buttonStyle(.plain)
                     }
@@ -74,7 +73,6 @@ struct SettingsView: View {
                 }
             }
 
-            // Data section
             Section("Daten") {
                 HStack {
                     Button("Datenbank sichern") {
@@ -93,7 +91,6 @@ struct SettingsView: View {
                 }
             }
 
-            // Info section
             Section("Info") {
                 LabeledContent("Version", value: "1.0.0")
                 LabeledContent("Speicherort", value: "~/Library/Application Support/TimeAudit")
@@ -101,6 +98,7 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .frame(width: 420, height: 500)
+        .background(ThemeColors.background)
         .preferredColorScheme(.dark)
         .onAppear {
             settingsVM.load(context: modelContext)

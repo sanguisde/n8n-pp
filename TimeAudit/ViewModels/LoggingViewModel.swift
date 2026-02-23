@@ -24,14 +24,16 @@ final class LoggingViewModel {
     /// Last 3 logged categories for smart default calculation
     private var recentCategories: [ActivityCategory] = []
 
-    /// Save the current entry to SwiftData
+    /// Save the current entry to SwiftData. Note is mandatory.
     func saveEntry(context: ModelContext, intervalMinutes: Int) -> Bool {
         guard let category = selectedCategory else { return false }
+        let trimmedNote = noteText.trimmingCharacters(in: .whitespaces)
+        guard !trimmedNote.isEmpty else { return false }
 
         let entry = TimeEntry(
             timestamp: .now,
             category: category.rawValue,
-            note: noteText.isEmpty ? nil : noteText,
+            note: trimmedNote,
             project: projectText.isEmpty ? nil : projectText,
             intervalMinutes: intervalMinutes
         )

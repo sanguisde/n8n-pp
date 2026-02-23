@@ -14,9 +14,10 @@ struct DailyOverviewView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Heute")
                         .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(ThemeColors.textPrimary)
                     Text("Gesamt: \(StatisticsViewModel.formatMinutes(statsVM.todayTotalMinutes))")
                         .font(.system(size: 13))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(ThemeColors.textSecondary)
                 }
                 Spacer()
                 FocusScoreView(score: statsVM.todayFocusScore, size: 70)
@@ -33,16 +34,20 @@ struct DailyOverviewView: View {
                     .annotation(position: .trailing) {
                         Text("\(StatisticsViewModel.formatMinutes(item.minutes)) (\(Int(statsVM.percentage(for: item.minutes)))%)")
                             .font(.system(size: 10))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(ThemeColors.textTertiary)
                     }
                 }
                 .chartYAxis {
-                    AxisMarks { value in
+                    AxisMarks { _ in
                         AxisValueLabel()
                             .font(.system(size: 10))
+                            .foregroundStyle(ThemeColors.textSecondary)
                     }
                 }
                 .chartXAxis(.hidden)
+                .chartPlotStyle { plotArea in
+                    plotArea.background(ThemeColors.cardBackground.opacity(0.3))
+                }
                 .frame(height: CGFloat(statsVM.todayCategoryMinutes.count * 36))
             } else {
                 ContentUnavailableView(
@@ -54,12 +59,15 @@ struct DailyOverviewView: View {
 
             // Best/Worst hour
             if statsVM.bestHour != nil || statsVM.worstHour != nil {
-                Divider()
+                Rectangle()
+                    .fill(ThemeColors.subtleBorder)
+                    .frame(height: 0.5)
                 HStack(spacing: 24) {
                     if let best = statsVM.bestHour {
                         Label {
                             Text("Produktivste Stunde: \(StatisticsViewModel.formatHour(best))")
                                 .font(.system(size: 12))
+                                .foregroundStyle(ThemeColors.textPrimary)
                         } icon: {
                             Image(systemName: "arrow.up.circle.fill")
                                 .foregroundStyle(.green)
@@ -69,6 +77,7 @@ struct DailyOverviewView: View {
                         Label {
                             Text("Am wenigsten produktiv: \(StatisticsViewModel.formatHour(worst))")
                                 .font(.system(size: 12))
+                                .foregroundStyle(ThemeColors.textPrimary)
                         } icon: {
                             Image(systemName: "arrow.down.circle.fill")
                                 .foregroundStyle(.red)

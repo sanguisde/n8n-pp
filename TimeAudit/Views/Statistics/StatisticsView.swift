@@ -39,7 +39,9 @@ struct StatisticsView: View {
                 }
             }
 
-            Divider()
+            Rectangle()
+                .fill(ThemeColors.subtleBorder)
+                .frame(height: 0.5)
 
             // Export button
             HStack {
@@ -54,13 +56,23 @@ struct StatisticsView: View {
                 Button(action: exportCSV) {
                     Label("CSV Export", systemImage: "square.and.arrow.up")
                         .font(.system(size: 12))
+                        .foregroundStyle(ThemeColors.accent)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(ThemeColors.accent.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(ThemeColors.accent.opacity(0.25), lineWidth: 0.5)
+                        )
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
         }
         .frame(width: 500, height: 480)
+        .background(ThemeColors.background)
         .preferredColorScheme(.dark)
         .onAppear {
             statsVM.refresh(entries: allEntries)
@@ -70,10 +82,8 @@ struct StatisticsView: View {
     private func exportCSV() {
         if let url = CSVExporter.exportToFile(entries: allEntries) {
             exportMessage = "Exportiert: \(url.lastPathComponent)"
-            // Open in Finder
             NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: url.deletingLastPathComponent().path)
 
-            // Clear message after 3 seconds
             DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                 exportMessage = nil
             }

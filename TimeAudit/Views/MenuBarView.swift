@@ -16,25 +16,22 @@ struct MenuBarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header with score
             headerSection
 
-            Divider().background(Color.white.opacity(0.1))
+            separator
 
-            // Today's breakdown
             todaySection
 
-            Divider().background(Color.white.opacity(0.1))
+            separator
 
-            // Insights row
             insightsSection
 
-            Divider().background(Color.white.opacity(0.1))
+            separator
 
-            // Action buttons
             actionsSection
         }
         .frame(width: 300)
+        .background(ThemeColors.background)
         .preferredColorScheme(.dark)
         .onAppear {
             statsVM.refresh(entries: allEntries)
@@ -44,6 +41,12 @@ struct MenuBarView: View {
         }
     }
 
+    private var separator: some View {
+        Rectangle()
+            .fill(ThemeColors.subtleBorder)
+            .frame(height: 0.5)
+    }
+
     // MARK: - Header
 
     private var headerSection: some View {
@@ -51,9 +54,10 @@ struct MenuBarView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("TimeAudit")
                     .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(ThemeColors.textPrimary)
                 Text(timerLabel)
                     .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(ThemeColors.textSecondary)
             }
             Spacer()
             FocusScoreView(score: statsVM.todayFocusScore, size: 44)
@@ -74,12 +78,12 @@ struct MenuBarView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Heute")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(ThemeColors.textSecondary)
 
             if statsVM.todayCategoryMinutes.isEmpty {
                 Text("Noch keine Eintraege")
                     .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(ThemeColors.textTertiary)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 8)
             } else {
@@ -90,7 +94,7 @@ struct MenuBarView: View {
                 if statsVM.todayCategoryMinutes.count > 6 {
                     Text("+ \(statsVM.todayCategoryMinutes.count - 6) weitere")
                         .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(ThemeColors.textTertiary)
                 }
             }
         }
@@ -100,24 +104,24 @@ struct MenuBarView: View {
 
     private func categoryRow(_ category: ActivityCategory, minutes: Int) -> some View {
         HStack(spacing: 8) {
-            // Color bar
-            RoundedRectangle(cornerRadius: 2)
-                .fill(category.color)
+            RoundedRectangle(cornerRadius: 3)
+                .fill(category.color.opacity(0.8))
                 .frame(width: CGFloat(min(120, max(8, Double(minutes) / Double(max(1, statsVM.todayTotalMinutes)) * 120))), height: 12)
 
             Text(category.rawValue)
                 .font(.system(size: 11))
+                .foregroundStyle(ThemeColors.textPrimary)
                 .lineLimit(1)
 
             Spacer()
 
             Text(StatisticsViewModel.formatMinutes(minutes))
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(ThemeColors.textSecondary)
 
             Text("\(Int(statsVM.percentage(for: minutes)))%")
                 .font(.system(size: 10))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(ThemeColors.textTertiary)
                 .frame(width: 30, alignment: .trailing)
         }
     }
@@ -126,21 +130,19 @@ struct MenuBarView: View {
 
     private var insightsSection: some View {
         HStack(spacing: 12) {
-            // Weekly comparison
             VStack(alignment: .leading, spacing: 2) {
                 Text("vs. 7-Tage-Ø")
                     .font(.system(size: 9))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(ThemeColors.textTertiary)
                 Text("Score \(statsVM.weeklyAverageFocusScore)")
                     .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(ThemeColors.textPrimary)
             }
 
             Spacer()
 
-            // Streak
             StreakBadge(days: statsVM.productiveStreak, label: "Produktiv")
 
-            // Best/Worst hour
             if let best = statsVM.bestHour {
                 VStack(spacing: 1) {
                     Text("Best")
@@ -148,6 +150,7 @@ struct MenuBarView: View {
                         .foregroundStyle(.green)
                     Text(StatisticsViewModel.formatHour(best))
                         .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundStyle(ThemeColors.textPrimary)
                 }
             }
         }
@@ -164,15 +167,32 @@ struct MenuBarView: View {
                     Label("Jetzt loggen", systemImage: "plus.circle")
                         .font(.system(size: 12))
                         .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                        .background(ThemeColors.accent.opacity(0.2))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(ThemeColors.accent.opacity(0.3), lineWidth: 0.5)
+                        )
                 }
+                .buttonStyle(.plain)
+                .foregroundStyle(ThemeColors.accent)
 
                 Button(action: onOpenStatistics) {
                     Label("Statistiken", systemImage: "chart.bar")
                         .font(.system(size: 12))
                         .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                        .background(ThemeColors.cardBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 6)
+                                .stroke(ThemeColors.subtleBorder, lineWidth: 0.5)
+                        )
                 }
+                .buttonStyle(.plain)
+                .foregroundStyle(ThemeColors.textPrimary)
             }
-            .buttonStyle(.bordered)
 
             HStack(spacing: 8) {
                 Button(action: onOpenSettings) {
@@ -189,7 +209,7 @@ struct MenuBarView: View {
                 .keyboardShortcut("q")
             }
             .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(ThemeColors.textTertiary)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
