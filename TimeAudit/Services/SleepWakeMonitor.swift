@@ -4,7 +4,8 @@ import AppKit
 // MARK: - Sleep/Wake Monitor
 
 /// Monitors macOS sleep/wake events via NSWorkspace notifications.
-final class SleepWakeMonitor: ObservableObject {
+@Observable
+final class SleepWakeMonitor {
     /// Fired when the system wakes from sleep
     var onWake: (() -> Void)?
 
@@ -12,11 +13,12 @@ final class SleepWakeMonitor: ObservableObject {
     var onSleep: (() -> Void)?
 
     /// Timestamp of the last sleep event
-    @Published var lastSleepTime: Date?
+    var lastSleepTime: Date?
 
     /// Timestamp of the last wake event
-    @Published var lastWakeTime: Date?
+    var lastWakeTime: Date?
 
+    @ObservationIgnored
     private var observers: [NSObjectProtocol] = []
 
     func start() {

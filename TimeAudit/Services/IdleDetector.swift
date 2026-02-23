@@ -5,16 +5,18 @@ import IOKit
 
 /// Detects system idle time using IOKit's HIDIdleTime property.
 /// Polls the system to determine how long since the user last interacted (mouse/keyboard).
-final class IdleDetector: ObservableObject {
+@Observable
+final class IdleDetector {
     /// Current system idle time in seconds
-    @Published var idleTimeSeconds: TimeInterval = 0
+    var idleTimeSeconds: TimeInterval = 0
 
     /// Whether the system is considered idle (> threshold)
-    @Published var isIdle: Bool = false
+    var isIdle: Bool = false
 
     /// Idle threshold in seconds (default: 5 minutes)
     var idleThresholdSeconds: TimeInterval = 300
 
+    @ObservationIgnored
     private var pollTimer: Timer?
 
     /// Start polling for idle time every `interval` seconds
