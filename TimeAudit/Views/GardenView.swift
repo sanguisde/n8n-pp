@@ -91,7 +91,7 @@ struct GardenView: View {
         )
 
         // Stars for high scores
-        if score > 70 && size == .large {
+        if score > 70 && self.size == .large {
             for i in 0..<5 {
                 let x = CGFloat(i) * size.width / 5 + 15
                 let y = CGFloat(10 + (i * 7) % 30)
