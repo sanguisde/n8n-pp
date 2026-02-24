@@ -300,7 +300,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             timerVM: timerVM,
             statsVM: statsVM,
             settingsVM: settingsVM,
-            identityProvider: identityProvider
+            identityProvider: identityProvider,
+            gameVM: gameVM
         )
         .modelContainer(container)
 

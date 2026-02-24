@@ -107,6 +107,20 @@ final class GameEngine: GameEngineProtocol {
 
     // MARK: - Streak
 
+    /// Counts workdays (Mon–Fri) strictly between `from` (exclusive) and `to` (inclusive).
+    private func workdaysBetween(_ from: Date, _ to: Date) -> Int {
+        let calendar = Calendar.current
+        var count = 0
+        var current = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: from))!
+        let toStart = calendar.startOfDay(for: to)
+        while current <= toStart {
+            let wd = calendar.component(.weekday, from: current)
+            if wd >= 2 && wd <= 6 { count += 1 }
+            current = calendar.date(byAdding: .day, value: 1, to: current)!
+        }
+        return count
+    }
+
     @discardableResult
     func updateStreak(profile: PlayerProfile, today: Date = Date()) -> Bool {
         guard let lastActive = profile.lastActiveDate else {
@@ -116,13 +130,19 @@ final class GameEngine: GameEngineProtocol {
         }
 
         let calendar = Calendar.current
-        let daysSince = calendar.dateComponents([.day], from: lastActive, to: today).day ?? 0
+        let todayStart = calendar.startOfDay(for: today)
+        let lastStart = calendar.startOfDay(for: lastActive)
 
-        if daysSince == 0 {
-            // Same day – no change
+        // Same calendar day – no change
+        if todayStart == lastStart { return false }
+
+        let workdays = workdaysBetween(lastStart, todayStart)
+
+        if workdays == 0 {
+            // Only weekend days passed (e.g. logging on Saturday after Friday) – no change
             return false
-        } else if daysSince == 1 {
-            // Consecutive day – extend streak
+        } else if workdays == 1 {
+            // Next consecutive workday – extend streak (Fri→Mon counts as 1)
             profile.streakDays += 1
             profile.lastActiveDate = today
 
@@ -133,7 +153,7 @@ final class GameEngine: GameEngineProtocol {
 
             return false
         } else {
-            // Streak broken
+            // Gap in workdays – streak broken
             let wasActive = profile.streakDays > 0
             profile.streakDays = 1
             profile.lastActiveDate = today

@@ -268,28 +268,39 @@ struct MenuBarView: View {
     // MARK: - Insights
 
     private var insightsSection: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("vs. 7-Tage-Ø")
-                    .font(.system(size: 9))
-                    .foregroundStyle(textTer)
-                Text("\(identityProvider.scoreName) \(statsVM.weeklyAverageFocusScore)")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(textPrimary)
-            }
+        Group {
+            if !StatisticsViewModel.isWorkday() {
+                HStack {
+                    Text("🌴 Wochenende – kein Druck")
+                        .font(.system(size: 11))
+                        .foregroundStyle(textSec)
+                    Spacer()
+                }
+            } else {
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("vs. 7-Tage-Ø")
+                            .font(.system(size: 9))
+                            .foregroundStyle(textTer)
+                        Text("\(identityProvider.scoreName) \(statsVM.weeklyAverageFocusScore)")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(textPrimary)
+                    }
 
-            Spacer()
+                    Spacer()
 
-            StreakBadge(days: statsVM.productiveStreak, label: "Produktiv")
+                    StreakBadge(days: statsVM.productiveStreak, label: "Produktiv")
 
-            if let best = statsVM.bestHour {
-                VStack(spacing: 1) {
-                    Text("Best")
-                        .font(.system(size: 8))
-                        .foregroundStyle(.green)
-                    Text(StatisticsViewModel.formatHour(best))
-                        .font(.system(size: 10, weight: .medium, design: .monospaced))
-                        .foregroundStyle(textPrimary)
+                    if let best = statsVM.bestHour {
+                        VStack(spacing: 1) {
+                            Text("Best")
+                                .font(.system(size: 8))
+                                .foregroundStyle(.green)
+                            Text(StatisticsViewModel.formatHour(best))
+                                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                                .foregroundStyle(textPrimary)
+                        }
+                    }
                 }
             }
         }

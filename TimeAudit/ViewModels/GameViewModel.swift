@@ -48,8 +48,10 @@ final class GameViewModel {
     // MARK: - Process Entry
 
     /// Called after each log save. Updates XP, gold, energy, streak and checks achievements.
+    /// Skipped on weekends – entries are recorded but don't affect score/XP/gold/energy/streak.
     func processEntry(category: ActivityCategory, minutes: Int, allEntries: [TimeEntry], context: ModelContext) {
         guard let profile = playerProfile else { return }
+        guard StatisticsViewModel.isWorkday() else { return }
 
         // Update streak based on today vs last active date
         _ = GameEngine.shared.updateStreak(profile: profile, today: Date())

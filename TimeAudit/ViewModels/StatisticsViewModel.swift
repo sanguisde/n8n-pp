@@ -120,11 +120,18 @@ final class StatisticsViewModel {
             }
         }
 
-        let sortedDays = dayData.keys.sorted().reversed()
+        // Filter to workdays only (Mon–Fri) for streak calculation
+        let workdaysSorted = dayData.keys
+            .filter { day in
+                let wd = Calendar.current.component(.weekday, from: day)
+                return wd >= 2 && wd <= 6
+            }
+            .sorted()
+            .reversed()
 
-        // Productive streak: consecutive days with >= 240 min (4h) productive
+        // Productive streak: consecutive workdays with >= 240 min (4h) productive
         productiveStreak = 0
-        for day in sortedDays {
+        for day in workdaysSorted {
             let cats = dayData[day] ?? [:]
             let productiveMinutes = cats[.productive] ?? 0
             if productiveMinutes >= 240 {
@@ -134,9 +141,9 @@ final class StatisticsViewModel {
             }
         }
 
-        // No harmful streak: consecutive days with 0 min harmful
+        // No harmful streak: consecutive workdays with 0 min harmful
         noHarmfulStreak = 0
-        for day in sortedDays {
+        for day in workdaysSorted {
             let cats = dayData[day] ?? [:]
             let harmfulMinutes = cats[.harmful] ?? 0
             if harmfulMinutes == 0 {
@@ -241,6 +248,14 @@ final class StatisticsViewModel {
 
         let normalized = (weightedSum / Double(totalMinutes)) * 50.0 + 50.0
         return Int(max(0, min(100, normalized)))
+    }
+
+    // MARK: - Weekend Logic
+
+    /// Returns true for Mon–Fri (weekday 2–6), false for Sat–Sun.
+    static func isWorkday(_ date: Date = Date()) -> Bool {
+        let wd = Calendar.current.component(.weekday, from: date)
+        return wd >= 2 && wd <= 6  // 1=Sun, 2=Mon, ..., 6=Fri, 7=Sat
     }
 
     // MARK: - Formatting Helpers

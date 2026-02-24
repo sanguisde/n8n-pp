@@ -123,6 +123,28 @@ struct LoggingPopupView: View {
                     .font(.system(size: 10))
                     .foregroundStyle(ThemeColors.textTertiary)
             }
+
+            // Repeat-last-entry button
+            if let last = loggingVM.lastEntry {
+                Button {
+                    loggingVM.repeatLastEntry()
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.system(size: 9))
+                        Text("\"\(last.note)\"")
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                        Text("·")
+                        Circle()
+                            .fill(last.category.color)
+                            .frame(width: 7, height: 7)
+                    }
+                    .font(.system(size: 10))
+                    .foregroundStyle(ThemeColors.textSecondary)
+                }
+                .buttonStyle(.plain)
+            }
         }
         .padding(.horizontal, 12)
         .padding(.bottom, 12)

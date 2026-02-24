@@ -33,8 +33,9 @@ final class LoggingViewModel {
 
         context.insert(entry)
 
-        // Save last category for menu bar icon indicator
+        // Save last category and note for menu bar icon indicator and repeat-last-entry
         UserDefaults.standard.set(category.rawValue, forKey: "lastCategoryValue")
+        UserDefaults.standard.set(trimmedNote, forKey: "lastNoteText")
 
         // Update recent categories for smart defaults
         recentCategories.append(category)
@@ -74,6 +75,21 @@ final class LoggingViewModel {
         if let category = ActivityCategory.allCases.first(where: { $0.shortcutKey == key }) {
             selectedCategory = category
         }
+    }
+
+    /// Last saved entry (category + note) for the repeat-last-entry feature
+    var lastEntry: (category: ActivityCategory, note: String)? {
+        guard let note = UserDefaults.standard.string(forKey: "lastNoteText"), !note.isEmpty,
+              let rawVal = UserDefaults.standard.object(forKey: "lastCategoryValue") as? Int,
+              let cat = ActivityCategory(rawValue: rawVal) else { return nil }
+        return (cat, note)
+    }
+
+    /// Pre-fill note + category from the last saved entry
+    func repeatLastEntry() {
+        guard let last = lastEntry else { return }
+        noteText = last.note
+        selectedCategory = last.category
     }
 
     /// Load recent categories from existing entries

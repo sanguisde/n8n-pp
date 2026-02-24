@@ -13,6 +13,7 @@ struct FloatingWidgetView: View {
     @Bindable var statsVM: StatisticsViewModel
     @Bindable var settingsVM: SettingsViewModel
     let identityProvider: IdentityProvider
+    let gameVM: GameViewModel
 
     @State private var noteText: String = ""
     @State private var savedCategory: ActivityCategory?
@@ -22,6 +23,14 @@ struct FloatingWidgetView: View {
 
     private var noteIsValid: Bool {
         !noteText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    /// Last saved entry for repeat-last-entry feature
+    private var lastEntry: (category: ActivityCategory, note: String)? {
+        guard let note = UserDefaults.standard.string(forKey: "lastNoteText"), !note.isEmpty,
+              let rawVal = UserDefaults.standard.object(forKey: "lastCategoryValue") as? Int,
+              let cat = ActivityCategory(rawValue: rawVal) else { return nil }
+        return (cat, note)
     }
 
     // Light theme colors
@@ -110,6 +119,9 @@ struct FloatingWidgetView: View {
 
             Spacer()
 
+            BodyDoubleView(mood: gameVM.playerProfile?.companionMood ?? .neutral)
+                .padding(.horizontal, 4)
+
             VStack(alignment: .trailing, spacing: 1) {
                 Text(identityProvider.scoreName)
                     .font(.system(size: 9, weight: .medium))
@@ -150,34 +162,59 @@ struct FloatingWidgetView: View {
     // MARK: - Note Input
 
     private var noteSection: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "pencil.line")
-                .font(.system(size: 12))
-                .foregroundStyle(noteIsValid ? accent : textSecondary.opacity(0.5))
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 8) {
+                Image(systemName: "pencil.line")
+                    .font(.system(size: 12))
+                    .foregroundStyle(noteIsValid ? accent : textSecondary.opacity(0.5))
 
-            TextField("Was hast du gemacht? *", text: $noteText)
-                .textFieldStyle(.plain)
-                .font(.system(size: 12))
-                .foregroundStyle(textPrimary)
-                .focused($isNoteFocused)
-                .offset(x: noteShake ? -5 : 0)
-                .animation(.default.repeatCount(3, autoreverses: true).speed(6), value: noteShake)
+                TextField("Was hast du gemacht? *", text: $noteText)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12))
+                    .foregroundStyle(textPrimary)
+                    .focused($isNoteFocused)
+                    .offset(x: noteShake ? -5 : 0)
+                    .animation(.default.repeatCount(3, autoreverses: true).speed(6), value: noteShake)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(cardBg)
+                    .shadow(color: .black.opacity(0.05), radius: 2, y: 1)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(
+                                noteShake ? Color.red.opacity(0.6) :
+                                (noteIsValid ? accent.opacity(0.5) : border),
+                                lineWidth: 1
+                            )
+                    )
+            )
+
+            // Repeat-last-entry button
+            if let last = lastEntry {
+                Button {
+                    noteText = last.note
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.system(size: 9))
+                        Text("\"\(last.note)\"")
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                        Text("·")
+                        Circle()
+                            .fill(last.category.color)
+                            .frame(width: 7, height: 7)
+                    }
+                    .font(.system(size: 10))
+                    .foregroundStyle(textSecondary)
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 2)
+            }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(cardBg)
-                .shadow(color: .black.opacity(0.05), radius: 2, y: 1)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(
-                            noteShake ? Color.red.opacity(0.6) :
-                            (noteIsValid ? accent.opacity(0.5) : border),
-                            lineWidth: 1
-                        )
-                )
-        )
     }
 
     // MARK: - Category Buttons
@@ -271,14 +308,16 @@ struct FloatingWidgetView: View {
     // MARK: - Actions
 
     private func logCategory(_ category: ActivityCategory) {
+        let trimmedNote = noteText.trimmingCharacters(in: .whitespaces)
         let entry = TimeEntry(
             timestamp: .now,
             categoryValue: category.rawValue,
-            note: noteText.trimmingCharacters(in: .whitespaces),
+            note: trimmedNote,
             intervalMinutes: settingsVM.intervalMinutes
         )
         modelContext.insert(entry)
         UserDefaults.standard.set(category.rawValue, forKey: "lastCategoryValue")
+        UserDefaults.standard.set(trimmedNote, forKey: "lastNoteText")
 
         savedCategory = category
         showConfirmation = true
