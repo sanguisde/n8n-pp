@@ -1,139 +1,398 @@
-# TimeAudit - macOS Menubar Time Tracking App
+# TimeAudit – macOS Menubar Time Tracking App
 
-A minimalist macOS menu bar app built with SwiftUI that serves as a personal "Time Audit Tool". Every 15 minutes, a popup forces you to categorize what you did - building awareness of how you spend your time.
+Ein persönliches Produktivitäts-Tracking-Tool für macOS als Menu-Bar-App. Alle 15 Minuten (konfigurierbar) erscheint ein Popup, in dem du deine aktuelle Tätigkeit kategorisierst und beschreibst – mit RPG-Gamification, Gartenvisualisierung und psychologischen Interventionen.
 
-## Features
+---
 
-### Core
-- **Menu bar only** - runs silently in the background, no dock icon
-- **15-minute popup timer** - cannot be dismissed without selecting a category
-- **11 pre-built categories** with color coding and keyboard shortcuts (1-9, 0, -)
-- **Optional notes and project tags** per entry
-- **Dark minimalist UI** optimized for speed
+## Kernkonzept
 
-### Smart Features
-- **Focus Score** (0-100) - daily productivity score based on category weights
-- **Streak Tracking** - consecutive productive days and distraction-free days
-- **Smart Defaults** - pre-selects category if you logged the same one 3x in a row
-- **Idle Detection** - suggests "Pause" or "Schlaf" when Mac was idle
-- **Menu bar indicator** - colored dot shows last category's productivity level
-- **Wake-from-sleep detection** - immediate popup after Mac wakes up
-- **Re-reminder** - plays sound again if popup is open for > 5 minutes
+Das Prinzip ist radikal einfach: **Was gemessen wird, verändert sich.** Jede Kategorie bekommt ein Gewicht (+1 / 0 / -1), und aus allen Einträgen eines Tages errechnet sich ein **Focus Score** (0–100). Zusätzlich gibt es ein RPG-System mit XP, Gold, Leveln und Achievements, das produktives Verhalten langfristig belohnt.
 
-### Statistics
-- **Daily overview** - time per category with percentages and bar chart
-- **Weekly chart** - stacked bar chart per day (Swift Charts)
-- **Heatmap** - GitHub-style activity grid (weekday x hour)
-- **Best/Worst Hour** - auto-detected most/least productive times
-- **Day comparison** - today's score vs. 7-day average
+---
 
-### Extras
-- **CSV Export** to ~/Documents
-- **Global hotkey** Cmd+Shift+T to open logging window anytime
-- **Launch at Login** via SMAppService
-- **Database backup/restore** from Settings
-- **Configurable interval** (15 / 30 / 60 minutes)
-- **Notification sound** (toggleable)
+## Features im Detail
 
-## Categories
+### Logging
 
-| # | Category | Productivity Weight |
-|---|----------|-------------------|
-| 1 | Revenue Generating | +1.0 |
-| 2 | Strategisch | +0.7 |
-| 3 | Deep Work | +1.0 |
-| 4 | Admin | 0.0 |
-| 5 | Konsum | -0.5 |
-| 6 | Ablenkung | -1.0 |
-| 7 | Pause | 0.0 |
-| 8 | Training | +0.3 |
-| 9 | Schlaf | 0.0 |
-| 0 | Beziehung / Social | 0.0 |
-| - | Sonstiges | 0.0 |
+- **Intervall-Timer**: Konfigurierbar auf 15, 30 oder 60 Minuten; Countdown im Menu Bar Popover und Desktop Widget sichtbar
+- **Pflicht-Notiz**: Jeder Eintrag erfordert eine Freitext-Beschreibung – erzwingt Reflexion
+- **3 Kategorien** mit festen Produktivitätsgewichten:
+
+| Kategorie | Gewicht | Symbol |
+|-----------|---------|--------|
+| Produktiv (Umsatzgenerierend) | +1.0 | `chart.line.uptrend` |
+| Neutral | 0.0 | `minus.circle` |
+| Umsatzschädigend | -1.0 | `exclamationmark.triangle` |
+
+- **Tastenkürzel**: 1, 2, 3 für direkte Kategorie-Auswahl im Popup
+- **Smart Defaults**: Wenn die letzten 3 Einträge dieselbe Kategorie hatten, wird diese vorgeschlagen
+- **Bestätigungs-Overlay**: Kurze visuelle Rückmeldung nach dem Speichern (0,7 Sek)
+
+### Focus Score
+
+- Berechnung: `(gewichteter Durchschnitt der Kategorien * 50) + 50`
+- Wertebereich: 0–100
+- Wird täglich neu berechnet und im Popover, im Widget und in der Statistik angezeigt
+- Farbkodierung: Rot (<25), Orange (25–49), Blau (50–74), Grün (75+)
+
+### RPG-Gamification
+
+#### XP & Level
+- **Produktiv**: `Minuten × 2 × Streak-Multiplikator` XP
+- **Neutral**: `Minuten ÷ 2 × Streak-Multiplikator` XP
+- **Schädigend**: 0 XP
+
+| Level | XP-Schwelle | Standard-Titel | Faith-Titel |
+|-------|------------|----------------|-------------|
+| 1 | 0 | Anfänger | Suchender |
+| 2 | 500 | Lehrling | Schüler |
+| 3 | 1.500 | Geselle | Jünger |
+| 4 | 3.500 | Handwerker | Treuer |
+| 5 | 7.000 | Experte | Diener |
+| 6 | 13.000 | Meister | Bote |
+| 7 | 22.000 | Großmeister | Prophet |
+| 8 | 35.000 | Champion | Gesalbter |
+| 9 | 55.000 | Legende | Gesegneter |
+
+#### Gold
+- **Produktiv**: `+Minuten` Gold
+- **Neutral**: 0
+- **Schädigend**: `-(Minuten × 2)` Gold (kann negativ werden)
+
+#### Energy (0–100)
+- **Produktiv**: `+min(Minuten ÷ 2, 20)`
+- **Neutral**: `+2`
+- **Schädigend**: `-(Minuten × 3)`
+- Bei 0 Energy: Streak-Reset oder Streak-Shield (einmalige Schutzwirkung ab 7 Tagen)
+
+#### Streak & Multiplikatoren
+- Produktiver Streak: Aufeinanderfolgende Tage mit ≥240 min produktiv
+- Streak-Multiplikatoren: 1× (0–2 Tage), 1,25× (3–6), 1,5× (7–13), 1,75× (14–29), 2× (30+)
+- Streak-Shield: Ab 7 Tagen aktiv – schützt einmalig vor Streak-Reset durch Energy-Tod
+
+#### Achievements (8 Stück)
+
+| ID | Name | Bedingung | XP | Gold |
+|----|------|-----------|-----|------|
+| first_log | Erster Schritt | 1 Eintrag | 50 | 10 |
+| streak_3 | Beständig | 3-Tage-Streak | 200 | 50 |
+| streak_7 | Wochenkrieger | 7-Tage-Streak | 500 | 150 |
+| hundred_logs | Detektiv | 100 Einträge gesamt | 1.000 | 300 |
+| perfect_day | Reiner Tag | Kein schädigender Eintrag heute | 300 | 100 |
+| level_5 | Aufgestiegen | Level 5 erreicht | 500 | 200 |
+| garden_bloom | Garten blüht | Focus Score > 80 | 200 | 75 |
+| no_harmful_week | Reine Woche | 7 Tage ohne schädigende Einträge | 750 | 250 |
+
+### Gartenvisualisierung (GardenView)
+
+Canvas-gezeichneter Garten, der den Focus Score widerspiegelt:
+
+- **Score < 40**: Kahler Baum, Dornen, Unkraut, dunkler Himmel
+- **Score 40–60**: Vergilbter Baum, traurige Erde
+- **Score 60–80**: Grüner Baum, Blumen, heller Himmel
+- **Score 80+**: Voller Blüte, Schmetterlinge, Sterne
+- **Faith-Modus zusätzlich**: Goldene Partikel, spirituelle Symbolik
+
+Verfügbare Größen: `small` (20px), `medium` (80px), `large` (200px)
+
+### Identitätsmodi (IdentityMode)
+
+Globaler Schalter, der alle UI-Texte, Kategorienamen, Motivationsnachrichten und Leveltitel anpasst:
+
+- **Standard**: Produktivitäts-fokussiert (Steve Jobs-Zitate, Produktivitätsthemen)
+- **Faith**: Glaubens- und Berufungs-fokussiert (Bibelverse, Stewardship-Sprache)
+
+Tägliche Impulse rotieren basierend auf dem Datum durch 20 Produktivitätszitate oder 20 Bibelverse.
+
+### Loop-Breaker (InterventionViewModel)
+
+Psychologisches Interventionssystem bei schädigenden Mustern:
+
+- Zählt aufeinanderfolgende schädigende Einträge
+- Bei **2+ schädigenden Einträgen** in Folge: Intervention-Popup erscheint statt des normalen Logging-Popups
+- Inhalte:
+  1. **Prompt**: Aufforderung zur Atem-/Gebetsübung
+  2. **Timer**: 60-Sekunden-Countdown mit Kreisanimation
+  3. **Abschluss**: Positives Feedback, dann normales Logging
+- Mode-abhängige Texte ("Fokus-Verlust" vs. "Gaben-Verschwendung")
+
+### Dopamin-Nudge (DopaminMenu)
+
+Erscheint im Logging-Popup wenn Kategorie "Schädigend" gewählt wird:
+
+- 8 kontextuelle Alternativen (z. B. Social Media → 5 min Natur beobachten, YouTube → 15 min spazieren)
+- 5 Aktivitäts-Paarungen (z. B. E-Mails + Kaffee)
+- Auto-Dismiss nach 8 Sekunden, manuell schließbar
+
+### Companion (AICompanion)
+
+Emotionaler Begleiter, dessen Stimmung sich dem Verhalten anpasst:
+
+| Stimmung | Bedingung |
+|----------|-----------|
+| worried | 3+ schädigende in letzten 5 Einträgen |
+| happy/proud | 4+ produktive in letzten 5 + guter Streak |
+| disappointed | Energy < 20 |
+| neutral | Sonst |
+
+Generiert mode-abhängige Nachrichten für Session-Start, Intervall-Abschluss, Misserfolge, Erfolge.
+
+### Statistiken
+
+Vier Tabs im Statistik-Fenster (560×650 px):
+
+#### Heute
+- Tages-Breakdown: Kategorien mit Balkendiagramm, Minuten und Prozent
+- Focus Score + Garden
+- MissionBar (Produktivziel-Fortschritt)
+- Tages-Impuls (Zitat/Bibelvers)
+- Best/Worst Hour
+
+#### Woche
+- Gestapeltes Balkendiagramm der letzten 7 Tage (Swift Charts)
+- Produktiv-Streak-Badge
+- Kein-schädlicher-Streak-Badge
+- Wochendurchschnitts-Score
+
+#### Heatmap
+- GitHub-Stil: Wochentag × Uhrzeit (4 Wochen)
+- Farbintensität nach Aktivitätsvolumen
+- Zeigt produktivste Tageszeiten
+
+#### Profil
+- Level-Badge + Titel
+- XP-Fortschrittsbalken zum nächsten Level
+- Energy-Balken (farbkodiert)
+- Gold-Anzeige
+- Streak + Streak-Shield-Status
+- Companion-Stimmungs-Emoji
+- 2-spaltiges Achievement-Grid (gesperrt: 🔒, entsperrt: 🏆 + Datum)
+
+### Achievement Toast
+
+Erscheint als Overlay über dem Menu Bar Popover bei:
+- Achievement-Freischaltung: 🏆 Name + XP/Gold-Reward
+- Level-Up: ⬆️ neuer Titel + Level-Badge
+
+### MissionBar
+
+Fortschrittsbalken für das tägliche Produktivitätsziel:
+
+- **Manuell**: Ziel in Stunden einstellbar (1–8h)
+- **Adaptiv**: Automatisch berechnet als 7-Tage-Durchschnitt + 10%
+- Anzeige in Minuten oder "Einheiten" (alle 15 min = 1 Einheit)
+- Mode-abhängige Labels
+
+### Desktop Widget (FloatingWidget)
+
+Immer-oben-schwebendes Fenster (260px breit):
+
+- **Sichtbar auf allen Spaces** (auch in Fullscreen)
+- Zeigt: Timer-Countdown, Focus Score, Notizfeld, 3 Kategorie-Buttons
+- Licht-Design mit starkem Schatten für Sichtbarkeit auf jedem Desktop
+- Position wird gespeichert und bei App-Start wiederhergestellt
+- Kann verschoben werden (Drag)
+- Kann Key-Window werden (Textfeld-Eingabe möglich) ohne Fokus zu stehlen
+
+### Systembewusstsein
+
+- **Sleep/Wake**: Popup erscheint sofort nach System-Wake
+- **App Nap Prevention**: Timer läuft auch im Hintergrund weiter
+- **Idle Detection** (IOKit): Erkennt inaktive Mac-Phasen ≥5 Minuten
+- **Re-Reminder**: Wenn Popup >5 Minuten ignoriert wird, erneuter Sound
+- **Globaler Hotkey**: `Cmd+Shift+T` öffnet Logging-Popup aus jeder App
+
+---
+
+## UI-Design-Prinzipien
+
+- **Menu Bar Popover**: Helles Design (Off-White Hintergrund, dunkler Text, blauer Akzent)
+- **Desktop Widget**: Helles Design mit farbigem Top-Balken, starker Schatten
+- **Statistik/Settings**: Dunkles Design (`.preferredColorScheme(.dark)`)
+- **Logging Popup**: Dunkel mit blauen Akzentfarben
+- Durchgehend deutsche Sprache (UI, Fehlermeldungen, Motivationstexte)
+
+---
+
+## Datenstruktur
+
+```
+TimeEntry
+├── timestamp: Date
+├── categoryValue: Int (1=Produktiv, 2=Neutral, 3=Schädigend)
+├── note: String (Pflicht)
+└── intervalMinutes: Int
+
+AppSettings
+├── intervalMinutes: Int
+├── soundEnabled: Bool
+├── widgetEnabled: Bool
+├── identityModeRaw: String
+├── dailyGoalMinutes: Int
+└── useAdaptiveGoal: Bool
+
+PlayerProfile
+├── xp: Int
+├── gold: Int
+├── level: Int
+├── energy: Int (0–100)
+├── streakDays: Int
+├── streakShieldActive: Bool
+├── lastActiveDate: Date?
+└── companionMoodRaw: String
+
+Achievement
+├── achievementId: String (unique)
+├── name: String
+├── achievementDescription: String
+├── isUnlocked: Bool
+├── unlockedAt: Date?
+├── xpReward: Int
+└── goldReward: Int
+```
+
+**Speicherort**: `~/Library/Application Support/TimeAudit/default.store` (SQLite via SwiftData)
+**Backup/Restore**: Über Einstellungen → Daten
+
+---
+
+## Projektstruktur
+
+```
+TimeAudit/
+├── TimeAuditApp.swift              # @main, MenuBarExtra-Scene
+├── AppDelegate.swift               # Lifecycle, Panels, Hotkeys, Monitoring
+│
+├── Models/
+│   ├── TimeEntry.swift             # Haupt-Datensatz
+│   ├── Category.swift              # ActivityCategory enum (3 Kategorien)
+│   ├── AppSettings.swift           # Einstellungen (SwiftData)
+│   ├── PlayerProfile.swift         # RPG-Spielerprofil (SwiftData)
+│   ├── Achievement.swift           # Achievements (SwiftData)
+│   ├── IdentityMode.swift          # Standard/Faith enum
+│   └── GameModels.swift            # Level-Schwellen, Nudges, Quotes, Moods
+│
+├── ViewModels/
+│   ├── TimerViewModel.swift        # Intervall-Timer, Wake-Handling
+│   ├── LoggingViewModel.swift      # Kategorie-Auswahl, Smart Defaults
+│   ├── StatisticsViewModel.swift   # Aggregation, Score, Streaks, Heatmap
+│   ├── SettingsViewModel.swift     # Einstellungs-Persistenz
+│   ├── InterventionViewModel.swift # Loop-Breaker-Logik
+│   └── GameViewModel.swift         # RPG-State, Achievement-Checks, Toasts
+│
+├── Views/
+│   ├── MenuBarView.swift           # Haupt-Popover (helles Design)
+│   ├── LoggingPopupView.swift      # Logging-Popup (dunkles Design)
+│   ├── FloatingWidgetView.swift    # Desktop Widget (helles Design)
+│   ├── SettingsView.swift          # Einstellungen
+│   ├── InterventionView.swift      # Loop-Breaker-Popup
+│   ├── AchievementToastView.swift  # Achievement/Level-Up Toast
+│   ├── ProfileView.swift           # RPG-Profil-Tab
+│   └── Statistics/
+│       ├── StatisticsView.swift    # Tab-Container
+│       ├── DailyOverviewView.swift # Heute-Tab
+│       ├── WeeklyChartView.swift   # Woche-Tab
+│       └── HeatmapView.swift       # Heatmap-Tab
+│
+├── Components/
+│   ├── FloatingPanel.swift         # NSPanel-Subklasse für Logging-Popup
+│   ├── FloatingWidget.swift        # NSPanel-Subklasse für Desktop Widget
+│   ├── GardenView.swift            # Canvas-Garten-Visualisierung
+│   ├── MissionBar.swift            # Tagesziel-Fortschrittsbalken
+│   ├── FocusScoreView.swift        # Kreisförmiger Score-Indikator
+│   ├── StreakBadge.swift           # Streak-Anzeige (Flamme + Tage)
+│   ├── DailyImpulseView.swift      # Zitat/Bibelvers-Karte
+│   ├── DayBlocksView.swift         # Timeline-Blöcke (15-min-Raster)
+│   └── CategoryButton.swift        # Kategorie-Auswahl-Button
+│
+├── Services/
+│   ├── GameEngine.swift            # XP/Gold/Energy/Level-Berechnung
+│   ├── DopaminMenu.swift           # Nudge-Vorschläge für schädigende Einträge
+│   ├── AICompanion.swift           # Stimmungs- und Begleiter-Nachrichten
+│   ├── IdentityProvider.swift      # Mode-abhängige Strings, Daily Impulses
+│   ├── IdleDetector.swift          # IOKit Idle-Time-Überwachung
+│   ├── SleepWakeMonitor.swift      # Sleep/Wake-Events
+│   ├── CSVExporter.swift           # CSV-Export
+│   └── SoundPlayer.swift           # Benachrichtigungstöne
+│
+└── Protocols/
+    └── GameEngineProtocols.swift   # Interfaces für GameEngine, DopaminMenu, AICompanion
+```
+
+---
+
+## Datenfluss
+
+```
+Eintrag gespeichert (TimeEntry)
+  ↓
+AppDelegate.onLogSaved()
+  ├→ TimerViewModel.didLog()              → Timer zurücksetzen
+  ├→ InterventionViewModel.recordCategory() → Schädigungs-Muster prüfen
+  ├→ GameViewModel.processEntry()
+  │   ├→ GameEngine.updateStreak()
+  │   ├→ GameEngine.applyEntry()          → XP, Gold, Energy, Level-Up
+  │   ├→ GameEngine.checkAchievements()   → Achievements freischalten
+  │   └→ AICompanion.updateMood()         → Begleiter-Stimmung aktualisieren
+  └→ StatisticsViewModel.refresh()
+       ├→ computeToday()                  → Kategorien-Minuten, Focus Score
+       ├→ computeWeekly()                 → 7-Tage-Daten
+       ├→ computeStreaks()                 → Produktiv- und No-Harmful-Streak
+       ├→ computeBestWorstHour()          → Beste/schlechteste Stunde
+       ├→ computeHeatmap()                → 4-Wochen-Grid
+       └→ computeMissionBar()             → Tagesziel-Fortschritt
+```
+
+---
 
 ## Tech Stack
 
 - **SwiftUI** + **MenuBarExtra** (macOS 14+)
-- **SwiftData** for local persistence
-- **Swift Charts** for statistics visualizations
-- **IOKit** for idle time detection
-- **SMAppService** for launch at login
-- **NSPanel** subclass for floating popup window
-- **MVVM** architecture
+- **SwiftData** – lokale Persistenz (SQLite)
+- **Swift Charts** – Wochen-Balkendiagramm
+- **IOKit** – Idle-Time-Erkennung
+- **SMAppService** – Launch at Login (macOS 13+)
+- **NSPanel** – Floating Panels für Popups und Widget
+- **NSVisualEffectView** – Blur-Hintergrund für Widget
+- **Canvas / GraphicsContext** – Garten-Visualisierung
+- **MVVM** – Architekturmuster
+
+---
 
 ## Setup in Xcode
 
-1. **Open Xcode** (16.0+)
-2. **File > New > Project > macOS > App**
-   - Product Name: `TimeAudit`
-   - Interface: SwiftUI
-   - Storage: SwiftData
-   - Language: Swift
-3. **Delete** the auto-generated files (ContentView.swift, Item.swift, TimeAuditApp.swift)
-4. **Copy** all files from `TimeAudit/` into the Xcode project:
-   - Drag the folder contents into the Xcode project navigator
-   - Ensure "Copy items if needed" is checked
-   - Ensure target membership is set to `TimeAudit`
-5. **Set Info.plist**:
-   - Select the target > Info tab
-   - Add `Application is agent (UIElement)` = `YES`
-   - Or set `LSUIElement` = `true` in Info.plist
-6. **Set deployment target** to macOS 14.0
-7. **Add frameworks** (should be auto-linked):
-   - Charts
-   - SwiftData
-   - ServiceManagement
-   - IOKit
-8. **Build and Run** (Cmd+R)
+1. Xcode 16.0+ öffnen
+2. **File > Open** → `TimeAudit.xcodeproj`
+3. Target auswählen → **Signing & Capabilities**: Team eintragen
+4. **Build and Run** (`Cmd+R`)
 
-### Optional: Add KeyboardShortcuts package
-For user-customizable global hotkeys (currently uses NSEvent monitors):
-1. File > Add Package Dependencies
-2. URL: `https://github.com/sindresorhus/KeyboardShortcuts`
-3. Follow package integration instructions
+**Voraussetzungen**:
+- macOS 14.0+ als Deployment Target
+- Kein App Store – lokale Entwicklung/persönliche Nutzung
+- `LSUIElement = true` in Info.plist (App erscheint nicht im Dock)
 
-## Project Structure
+---
 
-```
-TimeAudit/
-├── TimeAuditApp.swift          # @main entry, MenuBarExtra scene
-├── AppDelegate.swift           # Panel management, monitors, hotkeys
-├── Models/
-│   ├── Category.swift          # ActivityCategory enum
-│   ├── TimeEntry.swift         # SwiftData model
-│   └── AppSettings.swift       # SwiftData settings model
-├── ViewModels/
-│   ├── TimerViewModel.swift    # Timer, wake detection, reminders
-│   ├── LoggingViewModel.swift  # Category selection, smart defaults
-│   ├── StatisticsViewModel.swift # Aggregation, scoring, analysis
-│   └── SettingsViewModel.swift # Settings management
-├── Views/
-│   ├── MenuBarView.swift       # Main popover view
-│   ├── LoggingPopupView.swift  # 15-min popup
-│   ├── SettingsView.swift      # Settings form
-│   └── Statistics/
-│       ├── StatisticsView.swift    # Tab container
-│       ├── DailyOverviewView.swift # Today's breakdown
-│       ├── WeeklyChartView.swift   # Weekly bar chart
-│       └── HeatmapView.swift      # Activity heatmap
-├── Components/
-│   ├── FloatingPanel.swift     # NSPanel subclass
-│   ├── CategoryButton.swift    # Category selection button
-│   ├── FocusScoreView.swift    # Circular score indicator
-│   └── StreakBadge.swift       # Streak display
-├── Services/
-│   ├── IdleDetector.swift      # IOKit idle time
-│   ├── SleepWakeMonitor.swift  # Sleep/wake events
-│   ├── CSVExporter.swift       # CSV export
-│   └── SoundPlayer.swift      # Notification sounds
-└── Resources/
-    └── Assets.xcassets         # App icon
-```
+## Einstellungen
 
-## Data Storage
+| Einstellung | Optionen | Standard |
+|-------------|----------|----------|
+| Intervall | 15 / 30 / 60 min | 15 min |
+| Benachrichtigungston | An/Aus | An |
+| Identitätsmodus | Standard / Faith | Standard |
+| Tagesziel | 1–8 Stunden | 4 Stunden |
+| Adaptives Ziel | An/Aus | Aus |
+| Desktop Widget | An/Aus | Aus |
+| Beim Login starten | An/Aus | Aus |
 
-All data is stored locally in `~/Library/Application Support/TimeAudit/` via SwiftData (SQLite under the hood). No cloud, no external APIs.
+---
 
-## License
+## Datenschutz
 
-Personal use.
+Alle Daten bleiben **lokal** auf dem Gerät. Keine Cloud, keine externen APIs, kein Tracking.
+
+---
+
+## Lizenz
+
+Persönliche Nutzung.
