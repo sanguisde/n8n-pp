@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
+import EventKit
 
 // MARK: - Settings View
 
@@ -12,6 +13,7 @@ struct SettingsView: View {
 
     @State private var backupMessage: String?
     @State private var showResetTodayConfirmation: Bool = false
+    @State private var calendarAuthorized: Bool = CalendarExporter.shared.isAuthorized
 
     var body: some View {
         Form {
@@ -109,6 +111,53 @@ struct SettingsView: View {
                     Text(msg)
                         .font(.system(size: 11))
                         .foregroundStyle(.green)
+                }
+            }
+
+            Section("Integrationen") {
+                // --- Kalender ---
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("iCloud Kalender")
+                            .font(.system(size: 12, weight: .medium))
+                        Text(calendarAuthorized
+                             ? "Aktiv – neue Einträge werden als Kalenderevents angelegt"
+                             : "Kalender-Zugriff noch nicht erteilt")
+                            .font(.system(size: 10))
+                            .foregroundStyle(ThemeColors.textTertiary)
+                    }
+                    Spacer()
+                    if calendarAuthorized {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    } else {
+                        Button("Zugriff erlauben") {
+                            CalendarExporter.shared.requestAccess { granted in
+                                calendarAuthorized = granted
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                    }
+                }
+
+                // --- Excel ---
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Excel-Protokoll")
+                            .font(.system(size: 12, weight: .medium))
+                        Text("Wird nach jedem Eintrag automatisch aktualisiert")
+                            .font(.system(size: 10))
+                            .foregroundStyle(ThemeColors.textTertiary)
+                    }
+                    Spacer()
+                    Button("Im Finder zeigen") {
+                        NSWorkspace.shared.activateFileViewerSelecting(
+                            [XLSXWriter.shared.exportURL]
+                        )
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
                 }
             }
 

@@ -203,7 +203,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         allEntries: entries,
                         context: context
                     )
+
+                    // Calendar event for the new entry
+                    CalendarExporter.shared.createEvent(for: lastEntry)
                 }
+
+                // Regenerate Excel log
+                XLSXWriter.shared.export(entries: entries)
 
                 statsVM.refresh(entries: entries)
             }
