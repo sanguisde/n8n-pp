@@ -10,8 +10,8 @@ final class FloatingWidget: NSPanel {
 
     init(contentView: some View) {
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 240, height: 150),
-            styleMask: [.nonactivatingPanel, .fullSizeContentView, .hudWindow],
+            contentRect: NSRect(x: 0, y: 0, width: 260, height: 200),
+            styleMask: [.nonactivatingPanel, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -31,12 +31,14 @@ final class FloatingWidget: NSPanel {
 
         // Build the content: blur background + SwiftUI view
         let blurView = NSVisualEffectView()
-        blurView.material = .hudWindow
+        blurView.material = .underWindowBackground
         blurView.blendingMode = .behindWindow
         blurView.state = .active
         blurView.wantsLayer = true
         blurView.layer?.cornerRadius = 14
         blurView.layer?.masksToBounds = true
+        blurView.layer?.borderWidth = 0.5
+        blurView.layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
 
         let hostingView = NSHostingView(rootView: contentView
             .preferredColorScheme(.dark)
