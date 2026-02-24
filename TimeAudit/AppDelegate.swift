@@ -39,12 +39,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var modelContainer: ModelContainer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Setup SwiftData
-        do {
-            modelContainer = try ModelContainer(for: TimeEntry.self, AppSettings.self, PlayerProfile.self, Achievement.self)
-        } catch {
-            fatalError("Failed to create ModelContainer: \(error)")
-        }
+        // Setup SwiftData – on schema migration failure, wipe the store and start fresh
+        modelContainer = Self.makeModelContainer()
 
         // Load settings
         if let context = modelContainer?.mainContext {
@@ -100,6 +96,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return nil
             }
             return event
+        }
+    }
+
+    private static func makeModelContainer() -> ModelContainer {
+        let schema = Schema([TimeEntry.self, AppSettings.self, PlayerProfile.self, Achievement.self])
+        do {
+            return try ModelContainer(for: schema)
+        } catch {
+            // Migration failed (e.g. breaking schema change) – delete old store and recreate
+            let storeURL = URL.applicationSupportDirectory.appending(path: "default.store")
+            for ext in ["", "-shm", "-wal"] {
+                try? FileManager.default.removeItem(
+                    at: storeURL.deletingPathExtension().appendingPathExtension("store\(ext)")
+                )
+            }
+            do {
+                return try ModelContainer(for: schema)
+            } catch {
+                fatalError("Failed to create ModelContainer even after reset: \(error)")
+            }
         }
     }
 
