@@ -4,10 +4,14 @@ import SwiftData
 
 // MARK: - App Delegate
 
-/// Manages the floating panel lifecycle, sleep/wake monitoring, and idle detection.
+/// Manages the floating panel lifecycle, sleep/wake monitoring, idle detection,
+/// and the IdentityMode/Intervention systems.
 final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The floating logging popup panel
     private var loggingPanel: FloatingPanel<AnyView>?
+
+    /// The intervention popup panel
+    private var interventionPanel: FloatingPanel<AnyView>?
 
     /// Always-on-top desktop widget for quick logging
     private var widgetPanel: FloatingWidget?
@@ -23,6 +27,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let loggingVM = LoggingViewModel()
     let statsVM = StatisticsViewModel()
     let settingsVM = SettingsViewModel()
+    let interventionVM = InterventionViewModel()
+
+    /// Identity provider for mode-dependent strings
+    let identityProvider = IdentityProvider()
 
     /// SwiftData model container (shared)
     var modelContainer: ModelContainer?
@@ -39,6 +47,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let context = modelContainer?.mainContext {
             settingsVM.load(context: context)
             timerVM.intervalMinutes = settingsVM.intervalMinutes
+            identityProvider.mode = settingsVM.identityMode
+
+            // Load intervention state from recent entries
+            let descriptor = FetchDescriptor<TimeEntry>(
+                sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+            )
+            if let entries = try? context.fetch(descriptor) {
+                interventionVM.loadFromEntries(entries)
+                statsVM.refresh(entries: entries)
+            }
         }
 
         // Start timer
@@ -79,9 +97,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Show the floating logging panel
+    /// Show the floating logging panel (or intervention if triggered)
     func showLoggingPanel() {
         guard let container = modelContainer else { return }
+
+        // Check if intervention should be shown instead
+        if interventionVM.shouldShowIntervention {
+            showInterventionPanel()
+            return
+        }
 
         // Load recent entries for smart defaults
         let context = container.mainContext
@@ -112,15 +136,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         loggingPanel?.present()
     }
 
+    /// Show the intervention popup
+    private func showInterventionPanel() {
+        guard let container = modelContainer else { return }
+
+        if settingsVM.soundEnabled {
+            SoundPlayer.playSystemSound()
+        }
+
+        if interventionPanel == nil || !(interventionPanel?.isVisible ?? false) {
+            let view = InterventionView(
+                interventionVM: interventionVM,
+                identityProvider: identityProvider
+            ) { [weak self] in
+                self?.interventionPanel?.dismiss()
+                // After dismissing intervention, show normal logging panel
+                self?.showLoggingPanel()
+            }
+            .modelContainer(container)
+
+            interventionPanel = FloatingPanel(contentView: AnyView(view))
+        }
+
+        interventionPanel?.present()
+    }
+
     /// Called when user saves a log entry
     private func onLogSaved() {
         loggingPanel?.dismiss()
         timerVM.didLog()
 
-        // Refresh statistics
+        // Track for intervention logic
         if let context = modelContainer?.mainContext {
-            let descriptor = FetchDescriptor<TimeEntry>()
+            let descriptor = FetchDescriptor<TimeEntry>(
+                sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+            )
             if let entries = try? context.fetch(descriptor) {
+                // Update intervention tracking
+                if let lastEntry = entries.first, let cat = lastEntry.activityCategory {
+                    interventionVM.recordCategory(cat)
+                }
+
                 statsVM.refresh(entries: entries)
             }
         }
@@ -140,13 +196,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        let view = StatisticsView(statsVM: statsVM)
-            .modelContainer(container)
-            .preferredColorScheme(.dark)
+        let view = StatisticsView(
+            statsVM: statsVM,
+            identityProvider: identityProvider,
+            settingsVM: settingsVM
+        )
+        .modelContainer(container)
+        .preferredColorScheme(.dark)
 
         let window = createStandardWindow(
             title: "TimeAudit - Statistiken",
-            size: NSSize(width: 500, height: 480),
+            size: NSSize(width: 560, height: 600),
             content: view
         )
         statisticsWindow = window
@@ -164,13 +224,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        let view = SettingsView(settingsVM: settingsVM)
-            .modelContainer(container)
-            .preferredColorScheme(.dark)
+        let view = SettingsView(
+            settingsVM: settingsVM,
+            identityProvider: identityProvider
+        )
+        .modelContainer(container)
+        .preferredColorScheme(.dark)
 
         let window = createStandardWindow(
             title: "TimeAudit - Einstellungen",
-            size: NSSize(width: 420, height: 400),
+            size: NSSize(width: 420, height: 550),
             content: view
         )
         settingsWindow = window
@@ -207,7 +270,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let view = FloatingWidgetView(
             timerVM: timerVM,
             statsVM: statsVM,
-            settingsVM: settingsVM
+            settingsVM: settingsVM,
+            identityProvider: identityProvider
         )
         .modelContainer(container)
 

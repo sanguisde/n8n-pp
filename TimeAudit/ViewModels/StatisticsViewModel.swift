@@ -44,6 +44,14 @@ final class StatisticsViewModel {
     /// Heatmap: (weekday 0-6, hour 0-23, dominant category, total minutes)
     var heatmapData: [(weekday: Int, hour: Int, category: ActivityCategory?, minutes: Int)] = []
 
+    // MARK: - Mission Bar Data
+
+    /// Today's productive minutes (Category 1)
+    var todayProductiveMinutes: Int = 0
+
+    /// Adaptive goal: 7-day average productive minutes + 10%
+    var adaptiveGoalMinutes: Int = 240
+
     // MARK: - Computation
 
     /// Refresh all statistics from the given entries
@@ -53,6 +61,7 @@ final class StatisticsViewModel {
         computeStreaks(entries: entries)
         computeBestWorstHour(entries: entries)
         computeHeatmap(entries: entries)
+        computeMissionBar(entries: entries)
     }
 
     /// Compute today's category breakdown and focus score
@@ -186,6 +195,35 @@ final class StatisticsViewModel {
                 let total = cats.values.reduce(0, +)
                 heatmapData.append((weekday: weekday, hour: hour, category: dominant, minutes: total))
             }
+        }
+    }
+
+    // MARK: - Mission Bar
+
+    /// Compute today's productive minutes and adaptive goal
+    private func computeMissionBar(entries: [TimeEntry]) {
+        let calendar = Calendar.current
+        let todayEntries = entries.filter { calendar.isDateInToday($0.timestamp) }
+
+        todayProductiveMinutes = todayEntries
+            .filter { $0.activityCategory == .productive }
+            .reduce(0) { $0 + $1.intervalMinutes }
+
+        // Adaptive goal: 7-day average productive minutes + 10%
+        let weekAgo = calendar.date(byAdding: .day, value: -7, to: .now)!
+        let weekEntries = entries.filter { $0.timestamp >= weekAgo && $0.activityCategory == .productive }
+
+        var dailyProductive: [Date: Int] = [:]
+        for entry in weekEntries {
+            let day = calendar.startOfDay(for: entry.timestamp)
+            dailyProductive[day, default: 0] += entry.intervalMinutes
+        }
+
+        if !dailyProductive.isEmpty {
+            let avg = dailyProductive.values.reduce(0, +) / dailyProductive.count
+            adaptiveGoalMinutes = max(60, Int(Double(avg) * 1.1)) // At least 1 hour
+        } else {
+            adaptiveGoalMinutes = 240 // Default 4 hours
         }
     }
 

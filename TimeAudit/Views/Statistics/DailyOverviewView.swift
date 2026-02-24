@@ -3,32 +3,55 @@ import Charts
 
 // MARK: - Daily Overview View
 
-/// Shows today's time breakdown with horizontal bars and a focus score.
+/// Shows today's time breakdown with garden visualization, charts, and mission bar.
 struct DailyOverviewView: View {
     let statsVM: StatisticsViewModel
+    let identityProvider: IdentityProvider
+    let goalMinutes: Int
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Focus score header
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Heute")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(ThemeColors.textPrimary)
-                    Text("Gesamt: \(StatisticsViewModel.formatMinutes(statsVM.todayTotalMinutes))")
-                        .font(.system(size: 13))
-                        .foregroundStyle(ThemeColors.textSecondary)
+            // Garden + Focus score header
+            HStack(spacing: 16) {
+                GardenView(
+                    score: statsVM.todayFocusScore,
+                    isFaithMode: identityProvider.mode == .faith,
+                    size: .large
+                )
+
+                VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Heute")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(ThemeColors.textPrimary)
+                        Text("Gesamt: \(StatisticsViewModel.formatMinutes(statsVM.todayTotalMinutes))")
+                            .font(.system(size: 13))
+                            .foregroundStyle(ThemeColors.textSecondary)
+                    }
+
+                    FocusScoreView(score: statsVM.todayFocusScore, size: 70)
+
+                    // Mission bar
+                    MissionBar(
+                        currentMinutes: statsVM.todayProductiveMinutes,
+                        goalMinutes: goalMinutes,
+                        label: identityProvider.missionBarLabel(
+                            units: statsVM.todayProductiveMinutes / 15,
+                            goal: goalMinutes / 15
+                        )
+                    )
                 }
-                Spacer()
-                FocusScoreView(score: statsVM.todayFocusScore, size: 70)
             }
+
+            // Daily impulse
+            DailyImpulseView(identityProvider: identityProvider)
 
             // Bar chart
             if !statsVM.todayCategoryMinutes.isEmpty {
                 Chart(statsVM.todayCategoryMinutes, id: \.category) { item in
                     BarMark(
                         x: .value("Minuten", item.minutes),
-                        y: .value("Kategorie", item.category.displayName)
+                        y: .value("Kategorie", identityProvider.categoryName(for: item.category))
                     )
                     .foregroundStyle(item.category.color)
                     .annotation(position: .trailing) {

@@ -9,9 +9,15 @@ struct StatisticsView: View {
     @Query(sort: \TimeEntry.timestamp, order: .reverse) private var allEntries: [TimeEntry]
 
     @Bindable var statsVM: StatisticsViewModel
+    let identityProvider: IdentityProvider
+    let settingsVM: SettingsViewModel
 
     @State private var selectedTab = 0
     @State private var exportMessage: String?
+
+    private var goalMinutes: Int {
+        settingsVM.useAdaptiveGoal ? statsVM.adaptiveGoalMinutes : settingsVM.dailyGoalMinutes
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -29,7 +35,11 @@ struct StatisticsView: View {
             ScrollView {
                 switch selectedTab {
                 case 0:
-                    DailyOverviewView(statsVM: statsVM)
+                    DailyOverviewView(
+                        statsVM: statsVM,
+                        identityProvider: identityProvider,
+                        goalMinutes: goalMinutes
+                    )
                 case 1:
                     WeeklyChartView(statsVM: statsVM)
                 case 2:
@@ -71,7 +81,7 @@ struct StatisticsView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
         }
-        .frame(width: 500, height: 480)
+        .frame(width: 560, height: 600)
         .background(ThemeColors.background)
         .preferredColorScheme(.dark)
         .onAppear {

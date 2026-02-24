@@ -4,12 +4,15 @@ import SwiftData
 // MARK: - Floating Widget View
 
 /// Compact always-on-top widget for quick time logging.
-/// Note is mandatory - user types a note first, then clicks a category to save.
+/// Includes day blocks, daily impulse, mission bar, and category buttons.
 struct FloatingWidgetView: View {
     @Environment(\.modelContext) private var modelContext
+    @Query(sort: \TimeEntry.timestamp, order: .reverse) private var allEntries: [TimeEntry]
+
     @Bindable var timerVM: TimerViewModel
     @Bindable var statsVM: StatisticsViewModel
     @Bindable var settingsVM: SettingsViewModel
+    let identityProvider: IdentityProvider
 
     @State private var noteText: String = ""
     @State private var savedCategory: ActivityCategory?
@@ -21,29 +24,65 @@ struct FloatingWidgetView: View {
         !noteText.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
+    private var todayEntries: [TimeEntry] {
+        let calendar = Calendar.current
+        return allEntries.filter { calendar.isDateInToday($0.timestamp) }
+    }
+
+    private var goalMinutes: Int {
+        settingsVM.useAdaptiveGoal ? statsVM.adaptiveGoalMinutes : settingsVM.dailyGoalMinutes
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Header: Timer + Score
             headerRow
                 .padding(.horizontal, 10)
                 .padding(.top, 8)
-                .padding(.bottom, 6)
+                .padding(.bottom, 4)
 
             separator
 
-            // Note input (mandatory, above categories)
+            // Day blocks timeline
+            DayBlocksView(entries: todayEntries, intervalMinutes: settingsVM.intervalMinutes, compact: true)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+
+            // Mission bar
+            MissionBar(
+                currentMinutes: statsVM.todayProductiveMinutes,
+                goalMinutes: goalMinutes,
+                label: identityProvider.missionBarLabel(
+                    units: statsVM.todayProductiveMinutes / 15,
+                    goal: goalMinutes / 15
+                ),
+                compact: true
+            )
+            .padding(.horizontal, 8)
+            .padding(.bottom, 4)
+
+            separator
+
+            // Note input (mandatory)
             noteRow
                 .padding(.horizontal, 8)
-                .padding(.vertical, 6)
+                .padding(.vertical, 4)
 
             separator
 
             // Category buttons (3 in a row)
             categoryRow
                 .padding(.horizontal, 6)
-                .padding(.vertical, 6)
+                .padding(.vertical, 4)
+
+            separator
+
+            // Daily impulse
+            DailyImpulseView(identityProvider: identityProvider, compact: true)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 4)
         }
-        .frame(width: 240)
+        .frame(width: 260)
         .overlay(confirmationOverlay)
     }
 
@@ -57,17 +96,16 @@ struct FloatingWidgetView: View {
 
     private var headerRow: some View {
         HStack(spacing: 6) {
-            Image(systemName: "clock")
-                .font(.system(size: 10))
-                .foregroundStyle(ThemeColors.textTertiary)
+            GardenMenuBarIcon(score: statsVM.todayFocusScore)
+
             Text(timerLabel)
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
                 .foregroundStyle(ThemeColors.textSecondary)
 
             Spacer()
 
-            Text("Score")
-                .font(.system(size: 9))
+            Text(identityProvider.scoreName)
+                .font(.system(size: 8))
                 .foregroundStyle(ThemeColors.textTertiary)
             Text("\(statsVM.todayFocusScore)")
                 .font(.system(size: 13, weight: .bold, design: .rounded))
@@ -93,26 +131,25 @@ struct FloatingWidgetView: View {
 
     private var noteRow: some View {
         VStack(spacing: 3) {
-            HStack(spacing: 4) {
-                TextField("Kommentar *", text: $noteText)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 11))
-                    .foregroundStyle(ThemeColors.textPrimary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 4)
-                    .background(ThemeColors.inputBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 5))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 5)
-                            .stroke(
-                                noteShake ? ThemeColors.dangerAccent : (noteIsValid ? ThemeColors.accent.opacity(0.3) : ThemeColors.subtleBorder),
-                                lineWidth: noteShake ? 1.5 : 0.5
-                            )
-                    )
-                    .focused($isNoteFocused)
-                    .offset(x: noteShake ? -4 : 0)
-                    .animation(.default.repeatCount(3, autoreverses: true).speed(6), value: noteShake)
-            }
+            TextField("Kommentar *", text: $noteText)
+                .textFieldStyle(.plain)
+                .font(.system(size: 11))
+                .foregroundStyle(ThemeColors.textPrimary)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 4)
+                .background(ThemeColors.inputBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 5))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5)
+                        .stroke(
+                            noteShake ? ThemeColors.dangerAccent : (noteIsValid ? ThemeColors.accent.opacity(0.3) : ThemeColors.subtleBorder),
+                            lineWidth: noteShake ? 1.5 : 0.5
+                        )
+                )
+                .focused($isNoteFocused)
+                .offset(x: noteShake ? -4 : 0)
+                .animation(.default.repeatCount(3, autoreverses: true).speed(6), value: noteShake)
+
             if !noteIsValid {
                 Text("Pflichtfeld")
                     .font(.system(size: 8))
@@ -159,7 +196,7 @@ struct FloatingWidgetView: View {
             )
         }
         .buttonStyle(.plain)
-        .help(category.displayName)
+        .help(identityProvider.categoryName(for: category))
     }
 
     // MARK: - Confirmation Overlay
@@ -171,7 +208,7 @@ struct FloatingWidgetView: View {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 20))
                         .foregroundStyle(.green)
-                    Text(cat.displayName)
+                    Text(identityProvider.categoryName(for: cat))
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(.white)
                 }

@@ -10,9 +10,20 @@ struct MenuBarView: View {
 
     @Bindable var statsVM: StatisticsViewModel
     @Bindable var timerVM: TimerViewModel
+    let identityProvider: IdentityProvider
+    let settingsVM: SettingsViewModel
     let onLogNow: () -> Void
     let onOpenStatistics: () -> Void
     let onOpenSettings: () -> Void
+
+    private var todayEntries: [TimeEntry] {
+        let calendar = Calendar.current
+        return allEntries.filter { calendar.isDateInToday($0.timestamp) }
+    }
+
+    private var goalMinutes: Int {
+        settingsVM.useAdaptiveGoal ? statsVM.adaptiveGoalMinutes : settingsVM.dailyGoalMinutes
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -20,7 +31,15 @@ struct MenuBarView: View {
 
             separator
 
+            gardenAndScoreSection
+
+            separator
+
             todaySection
+
+            separator
+
+            missionBarSection
 
             separator
 
@@ -72,6 +91,39 @@ struct MenuBarView: View {
         return "Naechstes Log in \(min):\(String(format: "%02d", sec))"
     }
 
+    // MARK: - Garden & Score
+
+    private var gardenAndScoreSection: some View {
+        HStack(spacing: 12) {
+            GardenView(
+                score: statsVM.todayFocusScore,
+                isFaithMode: identityProvider.mode == .faith,
+                size: .medium
+            )
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(identityProvider.scoreName)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(ThemeColors.textTertiary)
+                Text("\(statsVM.todayFocusScore)")
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .foregroundStyle(scoreColor)
+
+                DailyImpulseView(identityProvider: identityProvider, compact: true)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+    }
+
+    private var scoreColor: Color {
+        let s = statsVM.todayFocusScore
+        if s >= 75 { return .green }
+        if s >= 50 { return ThemeColors.accent }
+        if s >= 25 { return .orange }
+        return .red
+    }
+
     // MARK: - Today Section
 
     private var todaySection: some View {
@@ -102,7 +154,7 @@ struct MenuBarView: View {
                 .fill(category.color.opacity(0.8))
                 .frame(width: CGFloat(min(120, max(8, Double(minutes) / Double(max(1, statsVM.todayTotalMinutes)) * 120))), height: 12)
 
-            Text(category.displayName)
+            Text(identityProvider.categoryName(for: category))
                 .font(.system(size: 11))
                 .foregroundStyle(ThemeColors.textPrimary)
                 .lineLimit(1)
@@ -120,6 +172,22 @@ struct MenuBarView: View {
         }
     }
 
+    // MARK: - Mission Bar
+
+    private var missionBarSection: some View {
+        MissionBar(
+            currentMinutes: statsVM.todayProductiveMinutes,
+            goalMinutes: goalMinutes,
+            label: identityProvider.missionBarLabel(
+                units: statsVM.todayProductiveMinutes / 15,
+                goal: goalMinutes / 15
+            ),
+            compact: true
+        )
+        .padding(.horizontal, 14)
+        .padding(.vertical, 6)
+    }
+
     // MARK: - Insights
 
     private var insightsSection: some View {
@@ -128,7 +196,7 @@ struct MenuBarView: View {
                 Text("vs. 7-Tage-Ø")
                     .font(.system(size: 9))
                     .foregroundStyle(ThemeColors.textTertiary)
-                Text("Score \(statsVM.weeklyAverageFocusScore)")
+                Text("\(identityProvider.scoreName) \(statsVM.weeklyAverageFocusScore)")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(ThemeColors.textPrimary)
             }

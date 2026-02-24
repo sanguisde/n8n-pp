@@ -4,10 +4,11 @@ import UniformTypeIdentifiers
 
 // MARK: - Settings View
 
-/// App settings: interval, sound, launch at login.
+/// App settings: interval, sound, identity mode, daily goal, launch at login.
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var settingsVM: SettingsViewModel
+    let identityProvider: IdentityProvider
 
     @State private var backupMessage: String?
 
@@ -21,6 +22,48 @@ struct SettingsView: View {
                 }
 
                 Toggle("Benachrichtigungston", isOn: $settingsVM.soundEnabled)
+            }
+
+            Section("Identitaet") {
+                Picker("Modus", selection: $settingsVM.identityMode) {
+                    ForEach(IdentityMode.allCases) { mode in
+                        VStack(alignment: .leading) {
+                            Text(mode.displayName).tag(mode)
+                        }
+                    }
+                }
+                .onChange(of: settingsVM.identityMode) {
+                    identityProvider.mode = settingsVM.identityMode
+                    settingsVM.save(context: modelContext)
+                }
+
+                Text(settingsVM.identityMode.description)
+                    .font(.system(size: 11))
+                    .foregroundStyle(ThemeColors.textTertiary)
+            }
+
+            Section("Tagesziel") {
+                Toggle("Adaptives Ziel (7-Tage-Ø + 10%)", isOn: $settingsVM.useAdaptiveGoal)
+                    .onChange(of: settingsVM.useAdaptiveGoal) {
+                        settingsVM.save(context: modelContext)
+                    }
+
+                if !settingsVM.useAdaptiveGoal {
+                    Picker("Ziel (Stunden)", selection: $settingsVM.dailyGoalHours) {
+                        ForEach(AppSettings.dailyGoalHourOptions, id: \.self) { hours in
+                            Text("\(hours) Stunden").tag(hours)
+                        }
+                    }
+                    .onChange(of: settingsVM.dailyGoalHours) {
+                        settingsVM.save(context: modelContext)
+                    }
+                }
+
+                Text(settingsVM.useAdaptiveGoal
+                    ? "Das Ziel wird automatisch aus deinem 7-Tage-Durchschnitt + 10% berechnet."
+                    : "Manuelles Tagesziel fuer produktive Arbeit (Kategorie 1).")
+                    .font(.system(size: 11))
+                    .foregroundStyle(ThemeColors.textTertiary)
             }
 
             Section("System") {
@@ -54,12 +97,12 @@ struct SettingsView: View {
             }
 
             Section("Info") {
-                LabeledContent("Version", value: "1.0.0")
+                LabeledContent("Version", value: "2.0.0")
                 LabeledContent("Speicherort", value: "~/Library/Application Support/TimeAudit")
             }
         }
         .formStyle(.grouped)
-        .frame(width: 420, height: 400)
+        .frame(width: 420, height: 550)
         .background(ThemeColors.background)
         .preferredColorScheme(.dark)
         .onAppear {

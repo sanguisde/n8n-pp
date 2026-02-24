@@ -4,7 +4,7 @@ import ServiceManagement
 
 // MARK: - Settings ViewModel
 
-/// Manages app settings: interval, sound, launch at login.
+/// Manages app settings: interval, sound, launch at login, identity mode, daily goal.
 @Observable
 final class SettingsViewModel {
     /// Timer interval in minutes
@@ -19,6 +19,15 @@ final class SettingsViewModel {
     /// Whether the desktop widget is visible
     var widgetEnabled: Bool = true
 
+    /// Identity mode (standard or faith)
+    var identityMode: IdentityMode = .standard
+
+    /// Daily goal in minutes for productive blocks
+    var dailyGoalMinutes: Int = 240
+
+    /// Whether to use adaptive goal calculation
+    var useAdaptiveGoal: Bool = false
+
     /// Load settings from SwiftData
     func load(context: ModelContext) {
         let descriptor = FetchDescriptor<AppSettings>()
@@ -26,6 +35,9 @@ final class SettingsViewModel {
             intervalMinutes = settings.intervalMinutes
             soundEnabled = settings.soundEnabled
             widgetEnabled = settings.widgetEnabled
+            identityMode = IdentityMode(rawValue: settings.identityModeRaw) ?? .standard
+            dailyGoalMinutes = settings.dailyGoalMinutes
+            useAdaptiveGoal = settings.useAdaptiveGoal
         }
 
         // Read launch at login status from SMAppService
@@ -49,6 +61,9 @@ final class SettingsViewModel {
         settings.intervalMinutes = intervalMinutes
         settings.soundEnabled = soundEnabled
         settings.widgetEnabled = widgetEnabled
+        settings.identityModeRaw = identityMode.rawValue
+        settings.dailyGoalMinutes = dailyGoalMinutes
+        settings.useAdaptiveGoal = useAdaptiveGoal
     }
 
     /// Toggle launch at login
@@ -69,4 +84,10 @@ final class SettingsViewModel {
 
     /// Available interval options
     var intervalOptions: [Int] { AppSettings.intervalOptions }
+
+    /// Daily goal in hours (for UI display)
+    var dailyGoalHours: Int {
+        get { dailyGoalMinutes / 60 }
+        set { dailyGoalMinutes = newValue * 60 }
+    }
 }
