@@ -2,8 +2,8 @@ import SwiftUI
 
 // MARK: - Category Button
 
-/// A single category selection button with shortcut label and color indicator.
-/// Clicking saves immediately (when enabled).
+/// A large category selection button with shortcut label and color indicator.
+/// Designed for 3 categories - bigger and more prominent.
 struct CategoryButton: View {
     let category: ActivityCategory
     let isSelected: Bool
@@ -13,24 +13,24 @@ struct CategoryButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 10) {
+            HStack(spacing: 12) {
                 // Shortcut key badge
                 Text(category.shortcutKey)
-                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .font(.system(size: 13, weight: .bold, design: .monospaced))
                     .foregroundStyle(isEnabled ? ThemeColors.textSecondary : ThemeColors.textTertiary)
-                    .frame(width: 22, height: 22)
+                    .frame(width: 28, height: 28)
                     .background(ThemeColors.elevatedBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 5))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
 
                 // Category icon
                 Image(systemName: category.sfSymbol)
-                    .font(.system(size: 14))
+                    .font(.system(size: 18))
                     .foregroundStyle(isEnabled ? category.color : category.color.opacity(0.35))
-                    .frame(width: 20)
+                    .frame(width: 24)
 
                 // Category name
-                Text(category.rawValue)
-                    .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
+                Text(category.displayName)
+                    .font(.system(size: 15, weight: isSelected ? .bold : .semibold))
                     .foregroundStyle(isEnabled ? ThemeColors.textPrimary : ThemeColors.textTertiary)
 
                 Spacer()
@@ -38,27 +38,27 @@ struct CategoryButton: View {
                 // Suggestion indicator
                 if isSuggested {
                     Text("vorgeschlagen")
-                        .font(.system(size: 9))
+                        .font(.system(size: 10))
                         .foregroundStyle(ThemeColors.accent)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
                         .background(ThemeColors.accent.opacity(0.15))
                         .clipShape(Capsule())
                 }
 
-                // Color dot
-                Circle()
+                // Color indicator bar
+                RoundedRectangle(cornerRadius: 3)
                     .fill(isEnabled ? category.color : category.color.opacity(0.35))
-                    .frame(width: 8, height: 8)
+                    .frame(width: 4, height: 28)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
             .background(
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: 10)
                     .fill(isSelected ? category.color.opacity(0.2) : ThemeColors.cardBackground)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: 10)
                     .stroke(
                         isSelected ? category.color.opacity(0.5) : ThemeColors.subtleBorder,
                         lineWidth: isSelected ? 1.5 : 0.5

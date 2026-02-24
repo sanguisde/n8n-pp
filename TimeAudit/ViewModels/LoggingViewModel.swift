@@ -9,17 +9,11 @@ final class LoggingViewModel {
     /// Currently selected category
     var selectedCategory: ActivityCategory?
 
-    /// Optional note text
+    /// Mandatory note text
     var noteText: String = ""
-
-    /// Optional project tag
-    var projectText: String = ""
 
     /// Smart default suggestion based on recent entries
     var suggestedCategory: ActivityCategory?
-
-    /// Whether an idle state was detected (suggests Pause/Schlaf)
-    var idleDetected: Bool = false
 
     /// Last 3 logged categories for smart default calculation
     private var recentCategories: [ActivityCategory] = []
@@ -32,16 +26,15 @@ final class LoggingViewModel {
 
         let entry = TimeEntry(
             timestamp: .now,
-            category: category.rawValue,
+            categoryValue: category.rawValue,
             note: trimmedNote,
-            project: projectText.isEmpty ? nil : projectText,
             intervalMinutes: intervalMinutes
         )
 
         context.insert(entry)
 
         // Save last category for menu bar icon indicator
-        UserDefaults.standard.set(category.rawValue, forKey: "lastCategory")
+        UserDefaults.standard.set(category.rawValue, forKey: "lastCategoryValue")
 
         // Update recent categories for smart defaults
         recentCategories.append(category)
@@ -59,18 +52,11 @@ final class LoggingViewModel {
     func reset() {
         selectedCategory = nil
         noteText = ""
-        projectText = ""
-        idleDetected = false
         updateSuggestion()
     }
 
     /// Update smart default suggestion
     func updateSuggestion() {
-        if idleDetected {
-            suggestedCategory = .pause
-            return
-        }
-
         // If last 3 categories are the same, suggest that category
         if recentCategories.count >= 3 {
             let last3 = Array(recentCategories.suffix(3))
@@ -81,12 +67,6 @@ final class LoggingViewModel {
         }
 
         suggestedCategory = nil
-    }
-
-    /// Set idle state and update suggestion
-    func setIdleDetected(_ idle: Bool) {
-        idleDetected = idle
-        updateSuggestion()
     }
 
     /// Handle keyboard shortcut selection
@@ -102,7 +82,7 @@ final class LoggingViewModel {
             .sorted(by: { $0.timestamp > $1.timestamp })
             .prefix(3)
             .reversed()
-            .compactMap { ActivityCategory(rawValue: $0.category) }
+            .compactMap { ActivityCategory(rawValue: $0.categoryValue) }
         updateSuggestion()
     }
 }

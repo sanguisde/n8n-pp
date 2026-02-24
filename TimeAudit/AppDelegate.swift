@@ -60,7 +60,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Register global keyboard shortcut (Cmd+Shift+T)
         NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            // Cmd+Shift+T
             if event.modifierFlags.contains([.command, .shift]) && event.keyCode == 17 {
                 DispatchQueue.main.async {
                     self?.showLoggingPanel()
@@ -83,9 +82,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Show the floating logging panel
     func showLoggingPanel() {
         guard let container = modelContainer else { return }
-
-        // Check idle state
-        loggingVM.setIdleDetected(idleDetector.isIdle)
 
         // Load recent entries for smart defaults
         let context = container.mainContext
@@ -174,7 +170,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let window = createStandardWindow(
             title: "TimeAudit - Einstellungen",
-            size: NSSize(width: 420, height: 500),
+            size: NSSize(width: 420, height: 400),
             content: view
         )
         settingsWindow = window
@@ -182,7 +178,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    /// Create a normal, interactive NSWindow with opaque background for standard views
+    /// Create a normal, interactive NSWindow
     private func createStandardWindow(title: String, size: NSSize, content: some View) -> NSWindow {
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: size),

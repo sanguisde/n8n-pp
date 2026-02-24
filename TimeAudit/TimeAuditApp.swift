@@ -48,9 +48,8 @@ struct TimeAuditApp: App {
 
     /// Color based on the last logged category's productivity
     private var lastCategoryColor: Color {
-        // Read from UserDefaults for quick access (set by LoggingViewModel on save)
-        if let lastCat = UserDefaults.standard.string(forKey: "lastCategory"),
-           let category = ActivityCategory(rawValue: lastCat) {
+        let lastValue = UserDefaults.standard.integer(forKey: "lastCategoryValue")
+        if let category = ActivityCategory(rawValue: lastValue) {
             return category.indicatorColor
         }
         return .gray
@@ -58,7 +57,6 @@ struct TimeAuditApp: App {
 
     /// Observe timer to show popup when needed
     private func observeTimerPopup() {
-        // Check periodically if popup should be shown
         Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
             if appDelegate.timerVM.shouldShowPopup {
                 appDelegate.timerVM.shouldShowPopup = false

@@ -17,13 +17,6 @@ struct FloatingWidgetView: View {
     @State private var noteShake: Bool = false
     @FocusState private var isNoteFocused: Bool
 
-    private let topRow: [ActivityCategory] = [
-        .revenueGenerating, .strategisch, .deepWork, .admin, .konsum, .ablenkung
-    ]
-    private let bottomRow: [ActivityCategory] = [
-        .pause, .training, .schlaf, .beziehung, .sonstiges
-    ]
-
     private var noteIsValid: Bool {
         !noteText.trimmingCharacters(in: .whitespaces).isEmpty
     }
@@ -45,8 +38,8 @@ struct FloatingWidgetView: View {
 
             separator
 
-            // Category grid
-            categoryGrid
+            // Category buttons (3 in a row)
+            categoryRow
                 .padding(.horizontal, 6)
                 .padding(.vertical, 6)
         }
@@ -101,7 +94,7 @@ struct FloatingWidgetView: View {
     private var noteRow: some View {
         VStack(spacing: 3) {
             HStack(spacing: 4) {
-                TextField("Notiz *", text: $noteText)
+                TextField("Kommentar *", text: $noteText)
                     .textFieldStyle(.plain)
                     .font(.system(size: 11))
                     .foregroundStyle(ThemeColors.textPrimary)
@@ -130,20 +123,12 @@ struct FloatingWidgetView: View {
         }
     }
 
-    // MARK: - Category Grid
+    // MARK: - Category Row
 
-    private var categoryGrid: some View {
-        VStack(spacing: 4) {
-            HStack(spacing: 4) {
-                ForEach(topRow) { category in
-                    categoryIcon(category)
-                }
-            }
-            HStack(spacing: 4) {
-                ForEach(bottomRow) { category in
-                    categoryIcon(category)
-                }
-                Spacer()
+    private var categoryRow: some View {
+        HStack(spacing: 4) {
+            ForEach(ActivityCategory.allCases) { category in
+                categoryIcon(category)
             }
         }
     }
@@ -158,13 +143,14 @@ struct FloatingWidgetView: View {
         } label: {
             VStack(spacing: 2) {
                 Image(systemName: category.sfSymbol)
-                    .font(.system(size: 14))
+                    .font(.system(size: 16))
                     .foregroundStyle(noteIsValid ? category.color : category.color.opacity(0.35))
                 Text(category.shortcutKey)
-                    .font(.system(size: 8, weight: .medium, design: .monospaced))
+                    .font(.system(size: 9, weight: .medium, design: .monospaced))
                     .foregroundStyle(ThemeColors.textTertiary)
             }
-            .frame(width: 34, height: 34)
+            .frame(maxWidth: .infinity)
+            .frame(height: 40)
             .background(ThemeColors.cardBackground)
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .overlay(
@@ -173,7 +159,7 @@ struct FloatingWidgetView: View {
             )
         }
         .buttonStyle(.plain)
-        .help(category.rawValue)
+        .help(category.displayName)
     }
 
     // MARK: - Confirmation Overlay
@@ -185,7 +171,7 @@ struct FloatingWidgetView: View {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 20))
                         .foregroundStyle(.green)
-                    Text(cat.rawValue)
+                    Text(cat.displayName)
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(.white)
                 }
@@ -203,12 +189,12 @@ struct FloatingWidgetView: View {
     private func logCategory(_ category: ActivityCategory) {
         let entry = TimeEntry(
             timestamp: .now,
-            category: category.rawValue,
+            categoryValue: category.rawValue,
             note: noteText.trimmingCharacters(in: .whitespaces),
             intervalMinutes: settingsVM.intervalMinutes
         )
         modelContext.insert(entry)
-        UserDefaults.standard.set(category.rawValue, forKey: "lastCategory")
+        UserDefaults.standard.set(category.rawValue, forKey: "lastCategoryValue")
 
         savedCategory = category
         showConfirmation = true

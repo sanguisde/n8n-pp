@@ -4,7 +4,7 @@ import ServiceManagement
 
 // MARK: - Settings ViewModel
 
-/// Manages app settings: interval, sound, launch at login, categories.
+/// Manages app settings: interval, sound, launch at login.
 @Observable
 final class SettingsViewModel {
     /// Timer interval in minutes
@@ -16,9 +16,6 @@ final class SettingsViewModel {
     /// Whether the app should launch at login
     var launchAtLogin: Bool = false
 
-    /// Custom categories (empty = use defaults)
-    var customCategories: [String] = []
-
     /// Whether the desktop widget is visible
     var widgetEnabled: Bool = true
 
@@ -28,7 +25,6 @@ final class SettingsViewModel {
         if let settings = try? context.fetch(descriptor).first {
             intervalMinutes = settings.intervalMinutes
             soundEnabled = settings.soundEnabled
-            customCategories = settings.customCategories
             widgetEnabled = settings.widgetEnabled
         }
 
@@ -52,7 +48,6 @@ final class SettingsViewModel {
 
         settings.intervalMinutes = intervalMinutes
         settings.soundEnabled = soundEnabled
-        settings.customCategories = customCategories
         settings.widgetEnabled = widgetEnabled
     }
 
@@ -67,7 +62,6 @@ final class SettingsViewModel {
                 }
             } catch {
                 print("Launch at login toggle failed: \(error)")
-                // Revert the toggle
                 launchAtLogin.toggle()
             }
         }

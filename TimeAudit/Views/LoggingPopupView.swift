@@ -20,7 +20,7 @@ enum ThemeColors {
 // MARK: - Logging Popup View
 
 /// The main popup shown every 15 minutes.
-/// Flow: User enters a note (mandatory) → clicks a category → saves immediately.
+/// Flow: User enters a note (mandatory) -> clicks a category -> saves immediately.
 struct LoggingPopupView: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var loggingVM: LoggingViewModel
@@ -42,32 +42,13 @@ struct LoggingPopupView: View {
 
             noteInputSection
 
-            ScrollView {
-                VStack(spacing: 4) {
-                    ForEach(ActivityCategory.allCases) { category in
-                        CategoryButton(
-                            category: category,
-                            isSelected: false,
-                            isSuggested: loggingVM.suggestedCategory == category,
-                            isEnabled: noteIsValid
-                        ) {
-                            if noteIsValid {
-                                saveWithCategory(category)
-                            } else {
-                                triggerNoteShake()
-                            }
-                        }
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-            }
+            categorySection
         }
-        .frame(width: 360, height: 540)
+        .frame(width: 360, height: 400)
         .background(ThemeColors.background)
         .overlay(confirmationOverlay)
         .preferredColorScheme(.dark)
-        .onKeyPress(keys: Set("1234567890-".map { KeyEquivalent(Character(String($0))) })) { press in
+        .onKeyPress(keys: Set("123".map { KeyEquivalent(Character(String($0))) })) { press in
             let key = String(press.key.character)
             if let category = ActivityCategory.allCases.first(where: { $0.shortcutKey == key }) {
                 if noteIsValid {
@@ -106,7 +87,7 @@ struct LoggingPopupView: View {
                     .font(.system(size: 11))
                     .foregroundStyle(noteIsValid ? ThemeColors.accent : ThemeColors.dangerAccent)
                     .frame(width: 16)
-                Text("Notiz")
+                Text("Kommentar")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(noteIsValid ? ThemeColors.textSecondary : ThemeColors.dangerAccent)
                 Text("*")
@@ -135,35 +116,39 @@ struct LoggingPopupView: View {
                 .animation(.default.repeatCount(3, autoreverses: true).speed(6), value: noteShake)
 
             if !noteIsValid {
-                Text("Tipp erst eine kurze Notiz ein, dann klick die Kategorie")
+                Text("Tipp erst einen kurzen Kommentar ein, dann klick die Kategorie")
                     .font(.system(size: 10))
                     .foregroundStyle(ThemeColors.textTertiary)
             }
-
-            HStack(spacing: 6) {
-                Image(systemName: "folder")
-                    .font(.system(size: 11))
-                    .foregroundStyle(ThemeColors.textTertiary)
-                    .frame(width: 16)
-                TextField("Projekt (optional)", text: $loggingVM.projectText)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 12))
-                    .foregroundStyle(ThemeColors.textPrimary)
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(ThemeColors.inputBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(ThemeColors.subtleBorder, lineWidth: 1)
-            )
         }
         .padding(.horizontal, 12)
-        .padding(.bottom, 8)
+        .padding(.bottom, 12)
         .onAppear {
             isNoteFieldFocused = true
         }
+    }
+
+    // MARK: - Category Buttons
+
+    private var categorySection: some View {
+        VStack(spacing: 8) {
+            ForEach(ActivityCategory.allCases) { category in
+                CategoryButton(
+                    category: category,
+                    isSelected: false,
+                    isSuggested: loggingVM.suggestedCategory == category,
+                    isEnabled: noteIsValid
+                ) {
+                    if noteIsValid {
+                        saveWithCategory(category)
+                    } else {
+                        triggerNoteShake()
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
     }
 
     // MARK: - Confirmation Overlay
@@ -175,7 +160,7 @@ struct LoggingPopupView: View {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 28))
                         .foregroundStyle(.green)
-                    Text(cat.rawValue)
+                    Text(cat.displayName)
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.white)
                     Text("Gespeichert")

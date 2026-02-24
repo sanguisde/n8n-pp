@@ -4,12 +4,11 @@ import UniformTypeIdentifiers
 
 // MARK: - Settings View
 
-/// App settings: interval, sound, launch at login, categories.
+/// App settings: interval, sound, launch at login.
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var settingsVM: SettingsViewModel
 
-    @State private var newCategoryName: String = ""
     @State private var backupMessage: String?
 
     var body: some View {
@@ -36,43 +35,6 @@ struct SettingsView: View {
                     }
             }
 
-            Section("Kategorien") {
-                Text("Standard-Kategorien sind immer verfuegbar. Hier kannst du weitere hinzufuegen.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(ThemeColors.textTertiary)
-
-                ForEach(settingsVM.customCategories, id: \.self) { category in
-                    HStack {
-                        Text(category)
-                            .foregroundStyle(ThemeColors.textPrimary)
-                        Spacer()
-                        Button(role: .destructive) {
-                            settingsVM.customCategories.removeAll { $0 == category }
-                            settingsVM.save(context: modelContext)
-                        } label: {
-                            Image(systemName: "trash")
-                                .font(.system(size: 11))
-                                .foregroundStyle(ThemeColors.dangerAccent)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-
-                HStack {
-                    TextField("Neue Kategorie", text: $newCategoryName)
-                        .textFieldStyle(.roundedBorder)
-
-                    Button("Hinzufuegen") {
-                        let name = newCategoryName.trimmingCharacters(in: .whitespaces)
-                        guard !name.isEmpty else { return }
-                        settingsVM.customCategories.append(name)
-                        newCategoryName = ""
-                        settingsVM.save(context: modelContext)
-                    }
-                    .disabled(newCategoryName.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-            }
-
             Section("Daten") {
                 HStack {
                     Button("Datenbank sichern") {
@@ -97,7 +59,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 420, height: 500)
+        .frame(width: 420, height: 400)
         .background(ThemeColors.background)
         .preferredColorScheme(.dark)
         .onAppear {

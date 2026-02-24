@@ -19,7 +19,6 @@ struct HeatmapView: View {
                 .foregroundStyle(.secondary)
 
             if !statsVM.heatmapData.isEmpty && statsVM.heatmapData.contains(where: { $0.minutes > 0 }) {
-                // Swift Charts heatmap using RectangleMark
                 Chart(statsVM.heatmapData.filter { $0.minutes > 0 }, id: \.hour) { item in
                     RectangleMark(
                         x: .value("Stunde", item.hour),
@@ -42,7 +41,7 @@ struct HeatmapView: View {
                     }
                 }
                 .chartYAxis {
-                    AxisMarks { value in
+                    AxisMarks { _ in
                         AxisValueLabel()
                             .font(.system(size: 10))
                     }
@@ -62,7 +61,6 @@ struct HeatmapView: View {
         .padding(16)
     }
 
-    /// Map minutes to opacity (more minutes = more opaque)
     private func opacityForMinutes(_ minutes: Int) -> Double {
         let maxExpected = 60.0
         return min(1.0, max(0.2, Double(minutes) / maxExpected))
@@ -70,21 +68,16 @@ struct HeatmapView: View {
 
     private var heatmapLegend: some View {
         HStack(spacing: 16) {
-            Text("Wenig")
-                .font(.system(size: 9))
-                .foregroundStyle(.secondary)
-
-            HStack(spacing: 2) {
-                ForEach([0.2, 0.4, 0.6, 0.8, 1.0], id: \.self) { opacity in
+            ForEach(ActivityCategory.allCases) { cat in
+                HStack(spacing: 4) {
                     RoundedRectangle(cornerRadius: 2)
-                        .fill(Color.blue.opacity(opacity))
+                        .fill(cat.color)
                         .frame(width: 12, height: 12)
+                    Text(cat.displayName)
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
                 }
             }
-
-            Text("Viel")
-                .font(.system(size: 9))
-                .foregroundStyle(.secondary)
         }
     }
 }

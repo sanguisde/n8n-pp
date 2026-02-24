@@ -28,7 +28,7 @@ struct DailyOverviewView: View {
                 Chart(statsVM.todayCategoryMinutes, id: \.category) { item in
                     BarMark(
                         x: .value("Minuten", item.minutes),
-                        y: .value("Kategorie", item.category.rawValue)
+                        y: .value("Kategorie", item.category.displayName)
                     )
                     .foregroundStyle(item.category.color)
                     .annotation(position: .trailing) {
@@ -48,7 +48,7 @@ struct DailyOverviewView: View {
                 .chartPlotStyle { plotArea in
                     plotArea.background(ThemeColors.cardBackground.opacity(0.3))
                 }
-                .frame(height: CGFloat(statsVM.todayCategoryMinutes.count * 36))
+                .frame(height: CGFloat(statsVM.todayCategoryMinutes.count * 44))
             } else {
                 ContentUnavailableView(
                     "Noch keine Daten",

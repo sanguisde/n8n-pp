@@ -87,14 +87,8 @@ struct MenuBarView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 8)
             } else {
-                ForEach(statsVM.todayCategoryMinutes.prefix(6), id: \.category) { item in
+                ForEach(statsVM.todayCategoryMinutes, id: \.category) { item in
                     categoryRow(item.category, minutes: item.minutes)
-                }
-
-                if statsVM.todayCategoryMinutes.count > 6 {
-                    Text("+ \(statsVM.todayCategoryMinutes.count - 6) weitere")
-                        .font(.system(size: 10))
-                        .foregroundStyle(ThemeColors.textTertiary)
                 }
             }
         }
@@ -108,7 +102,7 @@ struct MenuBarView: View {
                 .fill(category.color.opacity(0.8))
                 .frame(width: CGFloat(min(120, max(8, Double(minutes) / Double(max(1, statsVM.todayTotalMinutes)) * 120))), height: 12)
 
-            Text(category.rawValue)
+            Text(category.displayName)
                 .font(.system(size: 11))
                 .foregroundStyle(ThemeColors.textPrimary)
                 .lineLimit(1)

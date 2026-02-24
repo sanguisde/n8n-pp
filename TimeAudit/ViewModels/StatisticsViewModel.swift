@@ -23,8 +23,8 @@ final class StatisticsViewModel {
     /// Consecutive days with >= 4h productive work
     var productiveStreak: Int = 0
 
-    /// Consecutive days with 0 "Ablenkung" time
-    var noDistractionStreak: Int = 0
+    /// Consecutive days with 0 harmful time
+    var noHarmfulStreak: Int = 0
 
     // MARK: - Best/Worst Hour
 
@@ -62,7 +62,7 @@ final class StatisticsViewModel {
 
         var minutesByCategory: [ActivityCategory: Int] = [:]
         for entry in todayEntries {
-            if let cat = ActivityCategory(rawValue: entry.category) {
+            if let cat = ActivityCategory(rawValue: entry.categoryValue) {
                 minutesByCategory[cat, default: 0] += entry.intervalMinutes
             }
         }
@@ -84,7 +84,7 @@ final class StatisticsViewModel {
         var grouped: [Date: [ActivityCategory: Int]] = [:]
         for entry in weekEntries {
             let day = calendar.startOfDay(for: entry.timestamp)
-            if let cat = ActivityCategory(rawValue: entry.category) {
+            if let cat = ActivityCategory(rawValue: entry.categoryValue) {
                 grouped[day, default: [:]][cat, default: 0] += entry.intervalMinutes
             }
         }
@@ -98,7 +98,7 @@ final class StatisticsViewModel {
         weeklyAverageFocusScore = dailyScores.isEmpty ? 50 : dailyScores.reduce(0, +) / dailyScores.count
     }
 
-    /// Compute productive and no-distraction streaks
+    /// Compute productive and no-harmful streaks
     private func computeStreaks(entries: [TimeEntry]) {
         let calendar = Calendar.current
 
@@ -106,7 +106,7 @@ final class StatisticsViewModel {
         var dayData: [Date: [ActivityCategory: Int]] = [:]
         for entry in entries {
             let day = calendar.startOfDay(for: entry.timestamp)
-            if let cat = ActivityCategory(rawValue: entry.category) {
+            if let cat = ActivityCategory(rawValue: entry.categoryValue) {
                 dayData[day, default: [:]][cat, default: 0] += entry.intervalMinutes
             }
         }
@@ -117,7 +117,7 @@ final class StatisticsViewModel {
         productiveStreak = 0
         for day in sortedDays {
             let cats = dayData[day] ?? [:]
-            let productiveMinutes = cats.filter { $0.key.isProductive }.values.reduce(0, +)
+            let productiveMinutes = cats[.productive] ?? 0
             if productiveMinutes >= 240 {
                 productiveStreak += 1
             } else {
@@ -125,13 +125,13 @@ final class StatisticsViewModel {
             }
         }
 
-        // No distraction streak: consecutive days with 0 min Ablenkung
-        noDistractionStreak = 0
+        // No harmful streak: consecutive days with 0 min harmful
+        noHarmfulStreak = 0
         for day in sortedDays {
             let cats = dayData[day] ?? [:]
-            let distractionMinutes = cats[.ablenkung] ?? 0
-            if distractionMinutes == 0 {
-                noDistractionStreak += 1
+            let harmfulMinutes = cats[.harmful] ?? 0
+            if harmfulMinutes == 0 {
+                noHarmfulStreak += 1
             } else {
                 break
             }
@@ -144,11 +144,10 @@ final class StatisticsViewModel {
         let weekAgo = calendar.date(byAdding: .day, value: -7, to: .now)!
         let weekEntries = entries.filter { $0.timestamp >= weekAgo }
 
-        // Group by hour: [hour: [weight * minutes]]
         var hourScores: [Int: (weightedSum: Double, totalMinutes: Int)] = [:]
         for entry in weekEntries {
             let hour = calendar.component(.hour, from: entry.timestamp)
-            let weight = ActivityCategory(rawValue: entry.category)?.productivityWeight ?? 0
+            let weight = ActivityCategory(rawValue: entry.categoryValue)?.productivityWeight ?? 0
             var data = hourScores[hour, default: (0, 0)]
             data.weightedSum += weight * Double(entry.intervalMinutes)
             data.totalMinutes += entry.intervalMinutes
@@ -170,12 +169,11 @@ final class StatisticsViewModel {
         let monthAgo = calendar.date(byAdding: .day, value: -28, to: .now)!
         let recentEntries = entries.filter { $0.timestamp >= monthAgo }
 
-        // Group by (weekday, hour) → [category: minutes]
         var grid: [Int: [Int: [ActivityCategory: Int]]] = [:]
         for entry in recentEntries {
-            let weekday = calendar.component(.weekday, from: entry.timestamp) - 1 // 0=Sun
+            let weekday = calendar.component(.weekday, from: entry.timestamp) - 1
             let hour = calendar.component(.hour, from: entry.timestamp)
-            if let cat = ActivityCategory(rawValue: entry.category) {
+            if let cat = ActivityCategory(rawValue: entry.categoryValue) {
                 grid[weekday, default: [:]][hour, default: [:]][cat, default: 0] += entry.intervalMinutes
             }
         }
@@ -209,7 +207,7 @@ final class StatisticsViewModel {
 
     // MARK: - Formatting Helpers
 
-    /// Format minutes as "Xh YYm"
+    /// Format minutes as "H:MM"
     static func formatMinutes(_ minutes: Int) -> String {
         let h = minutes / 60
         let m = minutes % 60
