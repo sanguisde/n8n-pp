@@ -21,11 +21,12 @@ struct TimeAuditApp: App {
                 timerVM: appDelegate.timerVM,
                 identityProvider: appDelegate.identityProvider,
                 settingsVM: appDelegate.settingsVM,
+                gameVM: appDelegate.gameVM,
                 onLogNow: { appDelegate.showLoggingPanel() },
                 onOpenStatistics: { appDelegate.showStatisticsWindow() },
                 onOpenSettings: { appDelegate.showSettingsWindow() }
             )
-            .modelContainer(for: [TimeEntry.self, AppSettings.self])
+            .modelContainer(for: [TimeEntry.self, AppSettings.self, PlayerProfile.self, Achievement.self])
             .onAppear {
                 observeTimerPopup()
             }

@@ -12,6 +12,7 @@ struct MenuBarView: View {
     @Bindable var timerVM: TimerViewModel
     let identityProvider: IdentityProvider
     let settingsVM: SettingsViewModel
+    let gameVM: GameViewModel
     let onLogNow: () -> Void
     let onOpenStatistics: () -> Void
     let onOpenSettings: () -> Void
@@ -26,37 +27,52 @@ struct MenuBarView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            headerSection
+        ZStack(alignment: .top) {
+            VStack(spacing: 0) {
+                headerSection
 
-            separator
+                separator
 
-            gardenAndScoreSection
+                gardenAndScoreSection
 
-            separator
+                separator
 
-            todaySection
+                rpgSection
 
-            separator
+                separator
 
-            missionBarSection
+                todaySection
 
-            separator
+                separator
 
-            insightsSection
+                missionBarSection
 
-            separator
+                separator
 
-            actionsSection
-        }
-        .frame(width: 300)
-        .background(ThemeColors.background)
-        .preferredColorScheme(.dark)
-        .onAppear {
-            statsVM.refresh(entries: allEntries)
-        }
-        .onChange(of: allEntries.count) {
-            statsVM.refresh(entries: allEntries)
+                insightsSection
+
+                separator
+
+                actionsSection
+            }
+            .frame(width: 300)
+            .background(ThemeColors.background)
+            .preferredColorScheme(.dark)
+            .onAppear {
+                statsVM.refresh(entries: allEntries)
+            }
+            .onChange(of: allEntries.count) {
+                statsVM.refresh(entries: allEntries)
+            }
+
+            // Achievement / Level-up toast overlay
+            if gameVM.recentUnlock != nil || gameVM.showLevelUp {
+                AchievementToastView(gameVM: gameVM)
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .animation(.spring(response: 0.4), value: gameVM.recentUnlock?.achievementId)
+                    .animation(.spring(response: 0.4), value: gameVM.showLevelUp)
+            }
         }
     }
 
@@ -122,6 +138,78 @@ struct MenuBarView: View {
         if s >= 50 { return ThemeColors.accent }
         if s >= 25 { return .orange }
         return .red
+    }
+
+    // MARK: - RPG Section
+
+    private var rpgSection: some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 8) {
+                // Level badge
+                ZStack {
+                    Circle()
+                        .fill(ThemeColors.accent.opacity(0.2))
+                        .frame(width: 32, height: 32)
+                    Text("\(gameVM.playerProfile?.level ?? 1)")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(ThemeColors.accent)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    // Level title
+                    Text(gameVM.playerProfile?.currentLevelTitle ?? "Anfänger")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(ThemeColors.textPrimary)
+
+                    // XP progress bar
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(ThemeColors.elevatedBackground)
+                                .frame(height: 5)
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(ThemeColors.accent)
+                                .frame(width: geo.size.width * CGFloat(gameVM.playerProfile?.levelProgress ?? 0), height: 5)
+                        }
+                    }
+                    .frame(height: 5)
+                }
+
+                Spacer()
+
+                // Gold
+                HStack(spacing: 3) {
+                    Text("🪙")
+                        .font(.system(size: 11))
+                    Text("\(gameVM.playerProfile?.gold ?? 0)")
+                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .foregroundStyle(Color.yellow)
+                }
+            }
+
+            // Energy bar
+            HStack(spacing: 6) {
+                Text("⚡")
+                    .font(.system(size: 10))
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(ThemeColors.elevatedBackground)
+                            .frame(height: 4)
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(gameVM.energyColor)
+                            .frame(width: geo.size.width * CGFloat(gameVM.playerProfile?.energy ?? 100) / 100.0, height: 4)
+                    }
+                }
+                .frame(height: 4)
+                Text("\(gameVM.playerProfile?.energy ?? 100)")
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(ThemeColors.textTertiary)
+                    .frame(width: 24, alignment: .trailing)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
     }
 
     // MARK: - Today Section

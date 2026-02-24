@@ -11,6 +11,7 @@ struct StatisticsView: View {
     @Bindable var statsVM: StatisticsViewModel
     let identityProvider: IdentityProvider
     let settingsVM: SettingsViewModel
+    let gameVM: GameViewModel
 
     @State private var selectedTab = 0
     @State private var exportMessage: String?
@@ -26,6 +27,7 @@ struct StatisticsView: View {
                 Text("Heute").tag(0)
                 Text("Woche").tag(1)
                 Text("Heatmap").tag(2)
+                Text("Profil").tag(3)
             }
             .pickerStyle(.segmented)
             .padding(.horizontal, 16)
@@ -44,6 +46,8 @@ struct StatisticsView: View {
                     WeeklyChartView(statsVM: statsVM)
                 case 2:
                     HeatmapView(statsVM: statsVM)
+                case 3:
+                    ProfileView(gameVM: gameVM, identityProvider: identityProvider)
                 default:
                     EmptyView()
                 }
@@ -81,7 +85,7 @@ struct StatisticsView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
         }
-        .frame(width: 560, height: 600)
+        .frame(width: 560, height: 650)
         .background(ThemeColors.background)
         .preferredColorScheme(.dark)
         .onAppear {

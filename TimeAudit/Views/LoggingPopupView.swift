@@ -31,6 +31,9 @@ struct LoggingPopupView: View {
     @State private var noteShake: Bool = false
     @State private var savedCategory: ActivityCategory?
     @State private var showConfirmation: Bool = false
+    @State private var showNudge: Bool = false
+    @State private var nudgeDismissed: Bool = false
+    private let currentNudge: AppetitzerNudge = DopaminMenu.shared.randomNudge()
 
     private var noteIsValid: Bool {
         !loggingVM.noteText.trimmingCharacters(in: .whitespaces).isEmpty
@@ -140,15 +143,66 @@ struct LoggingPopupView: View {
                     isEnabled: noteIsValid
                 ) {
                     if noteIsValid {
+                        // Show nudge when selecting harmful category
+                        if category == .harmful && !nudgeDismissed {
+                            withAnimation(.easeInOut(duration: 0.2)) { showNudge = true }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 8) {
+                                withAnimation { showNudge = false }
+                            }
+                        }
                         saveWithCategory(category)
                     } else {
                         triggerNoteShake()
                     }
                 }
             }
+
+            // Dopamin-Nudge – shown briefly after logging a harmful entry
+            if showNudge {
+                dopaminNudgeView
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+        .animation(.easeInOut(duration: 0.2), value: showNudge)
+    }
+
+    private var dopaminNudgeView: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text("💡")
+                .font(.system(size: 13))
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Alternativ: \(currentNudge.alternative)")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(ThemeColors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("\(currentNudge.durationMinutes) Min · \(currentNudge.benefit)")
+                    .font(.system(size: 10))
+                    .foregroundStyle(ThemeColors.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer()
+            Button {
+                nudgeDismissed = true
+                withAnimation { showNudge = false }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 9))
+                    .foregroundStyle(ThemeColors.textTertiary)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(ThemeColors.elevatedBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(ThemeColors.subtleBorder, lineWidth: 0.5)
+                )
+        )
     }
 
     // MARK: - Confirmation Overlay

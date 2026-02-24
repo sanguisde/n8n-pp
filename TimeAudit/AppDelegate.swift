@@ -32,13 +32,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Identity provider for mode-dependent strings
     let identityProvider = IdentityProvider()
 
+    /// RPG game state (XP, gold, level, achievements)
+    let gameVM = GameViewModel()
+
     /// SwiftData model container (shared)
     var modelContainer: ModelContainer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Setup SwiftData
         do {
-            modelContainer = try ModelContainer(for: TimeEntry.self, AppSettings.self)
+            modelContainer = try ModelContainer(for: TimeEntry.self, AppSettings.self, PlayerProfile.self, Achievement.self)
         } catch {
             fatalError("Failed to create ModelContainer: \(error)")
         }
@@ -57,6 +60,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 interventionVM.loadFromEntries(entries)
                 statsVM.refresh(entries: entries)
             }
+
+            // Initialize RPG system (creates PlayerProfile + achievements if needed)
+            gameVM.initializeIfNeeded(context: context)
         }
 
         // Start timer
@@ -172,9 +178,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
             )
             if let entries = try? context.fetch(descriptor) {
-                // Update intervention tracking
+                // Update intervention tracking + RPG engine
                 if let lastEntry = entries.first, let cat = lastEntry.activityCategory {
                     interventionVM.recordCategory(cat)
+                    gameVM.processEntry(
+                        category: cat,
+                        minutes: lastEntry.intervalMinutes,
+                        allEntries: entries,
+                        context: context
+                    )
                 }
 
                 statsVM.refresh(entries: entries)
@@ -199,14 +211,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let view = StatisticsView(
             statsVM: statsVM,
             identityProvider: identityProvider,
-            settingsVM: settingsVM
+            settingsVM: settingsVM,
+            gameVM: gameVM
         )
         .modelContainer(container)
         .preferredColorScheme(.dark)
 
         let window = createStandardWindow(
             title: "TimeAudit - Statistiken",
-            size: NSSize(width: 560, height: 600),
+            size: NSSize(width: 560, height: 650),
             content: view
         )
         statisticsWindow = window
