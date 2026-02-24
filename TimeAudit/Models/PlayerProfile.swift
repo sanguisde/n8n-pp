@@ -12,6 +12,10 @@ final class PlayerProfile {
     var lastActiveDate: Date?
     var companionMoodRaw: String  // CompanionMood.rawValue
 
+    /// Distraction Debt: accumulated penalty minutes.
+    /// Harmful entry → +minutes×2. Productive entry → −minutes (floor 0).
+    var debtMinutes: Int
+
     init(
         xp: Int = 0,
         gold: Int = 0,
@@ -20,7 +24,8 @@ final class PlayerProfile {
         streakDays: Int = 0,
         streakShieldActive: Bool = false,
         lastActiveDate: Date? = nil,
-        companionMood: CompanionMood = .neutral
+        companionMood: CompanionMood = .neutral,
+        debtMinutes: Int = 0
     ) {
         self.xp = xp
         self.gold = gold
@@ -30,6 +35,7 @@ final class PlayerProfile {
         self.streakShieldActive = streakShieldActive
         self.lastActiveDate = lastActiveDate
         self.companionMoodRaw = companionMood.rawValue
+        self.debtMinutes = debtMinutes
     }
 
     var companionMood: CompanionMood {

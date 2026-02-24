@@ -219,10 +219,47 @@ struct MenuBarView: View {
                     categoryRow(item.category, minutes: item.minutes)
                 }
             }
+
+            // Distraction Debt row
+            if gameVM.debtMinutes > 0 {
+                debtRow
+            }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
         .background(bg)
+    }
+
+    private var debtRow: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 10))
+                .foregroundStyle(.red)
+
+            Text("Schulden")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.red)
+
+            Spacer()
+
+            Text("\(gameVM.debtMinutes) min")
+                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .foregroundStyle(.red)
+
+            Text("extra produktiv")
+                .font(.system(size: 10))
+                .foregroundStyle(textTer)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color.red.opacity(0.07))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.red.opacity(0.2), lineWidth: 0.5)
+                )
+        )
     }
 
     private func categoryRow(_ category: ActivityCategory, minutes: Int) -> some View {

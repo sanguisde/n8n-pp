@@ -59,6 +59,18 @@ final class GameEngine: GameEngineProtocol {
         let delta = energyDelta(category: category, minutes: minutes)
         profile.energy = max(0, min(100, profile.energy + delta))
 
+        // Distraction Debt (Loss Aversion):
+        // harmful → adds 2× the interval as penalty debt
+        // productive → pays off existing debt 1:1 (XP/gold still awarded normally)
+        switch category {
+        case .harmful:
+            profile.debtMinutes += minutes * 2
+        case .productive where profile.debtMinutes > 0:
+            profile.debtMinutes = max(0, profile.debtMinutes - minutes)
+        default:
+            break
+        }
+
         // Handle death
         if profile.energy <= 0 {
             handleDeath(profile: profile)

@@ -62,6 +62,10 @@ struct FloatingWidgetView: View {
                     .padding(.top, 10)
                     .padding(.bottom, 8)
 
+                if gameVM.debtMinutes > 0 {
+                    debtBanner
+                }
+
                 divider
 
                 noteSection
@@ -157,6 +161,46 @@ struct FloatingWidgetView: View {
         if s >= 50 { return accent }
         if s >= 25 { return .orange }
         return .red
+    }
+
+    // MARK: - Debt Banner
+
+    private var debtBanner: some View {
+        let debt = gameVM.debtMinutes
+        return HStack(spacing: 5) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 9))
+            Text("Schulden: \(debt) min extra produktiv nötig")
+                .font(.system(size: 10, weight: .semibold))
+                .lineLimit(1)
+            Spacer()
+            // Progress: how much debt was already paid off today
+            let paid = max(0, todayDebtPaid)
+            if paid > 0 {
+                Text("−\(paid) min")
+                    .font(.system(size: 9))
+                    .opacity(0.7)
+            }
+        }
+        .foregroundStyle(Color(red: 0.85, green: 0.15, blue: 0.15))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 5)
+        .background(Color.red.opacity(0.08))
+    }
+
+    /// Productive minutes logged today that went toward debt repayment.
+    /// Approximated from today's entries: min(todayProductive, initial debt).
+    private var todayDebtPaid: Int {
+        let todayProductive = allEntries
+            .filter { Calendar.current.isDateInToday($0.timestamp) }
+            .filter { ActivityCategory(rawValue: $0.categoryValue) == .productive }
+            .reduce(0) { $0 + $1.intervalMinutes }
+        // Show how much of today's productive time went to debt
+        let todayHarmful = allEntries
+            .filter { Calendar.current.isDateInToday($0.timestamp) }
+            .filter { ActivityCategory(rawValue: $0.categoryValue) == .harmful }
+            .reduce(0) { $0 + $1.intervalMinutes * 2 }
+        return min(todayProductive, todayHarmful)
     }
 
     // MARK: - Note Input

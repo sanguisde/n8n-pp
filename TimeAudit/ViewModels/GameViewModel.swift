@@ -109,6 +109,9 @@ final class GameViewModel {
         Int((playerProfile?.levelProgress ?? 0) * 100)
     }
 
+    /// Remaining Distraction Debt in minutes (0 = debt-free).
+    var debtMinutes: Int { playerProfile?.debtMinutes ?? 0 }
+
     var energyColor: Color {
         let e = playerProfile?.energy ?? 100
         if e >= 70 { return .green }
