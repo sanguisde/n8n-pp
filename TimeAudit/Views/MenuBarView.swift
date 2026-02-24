@@ -55,7 +55,7 @@ struct MenuBarView: View {
 
                 actionsSection
             }
-            .frame(width: 300)
+            .frame(width: 360)
             .background(ThemeColors.background)
             .preferredColorScheme(.dark)
             .onAppear {

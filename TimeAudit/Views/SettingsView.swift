@@ -27,9 +27,7 @@ struct SettingsView: View {
             Section("Identitaet") {
                 Picker("Modus", selection: $settingsVM.identityMode) {
                     ForEach(IdentityMode.allCases) { mode in
-                        VStack(alignment: .leading) {
-                            Text(mode.displayName).tag(mode)
-                        }
+                        Text(mode.displayName).tag(mode)
                     }
                 }
                 .onChange(of: settingsVM.identityMode) {

@@ -32,14 +32,12 @@ final class FloatingWidget: NSPanel {
 
         // Blur background + SwiftUI content
         let blurView = NSVisualEffectView()
-        blurView.material = .underWindowBackground
+        blurView.material = .contentBackground   // light/neutral material
         blurView.blendingMode = .behindWindow
         blurView.state = .active
         blurView.wantsLayer = true
         blurView.layer?.cornerRadius = 14
         blurView.layer?.masksToBounds = true
-        blurView.layer?.borderWidth = 0.5
-        blurView.layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
 
         let hostingView = NSHostingView(rootView: contentView
             .preferredColorScheme(.dark)
