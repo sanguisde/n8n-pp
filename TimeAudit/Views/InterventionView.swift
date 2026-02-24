@@ -47,6 +47,14 @@ struct InterventionView: View {
             )
         )
         .preferredColorScheme(.dark)
+        // Auto-dismiss after breathing timer completes
+        .onChange(of: interventionVM.interventionCompleted) { _, completed in
+            guard completed else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                interventionVM.dismiss()
+                onDismiss()
+            }
+        }
     }
 
     // MARK: - Warning Header

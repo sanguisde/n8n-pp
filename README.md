@@ -1,12 +1,12 @@
 # TimeAudit – macOS Menubar Time Tracking App
 
-Ein persönliches Produktivitäts-Tracking-Tool für macOS als Menu-Bar-App. Alle 15 Minuten (konfigurierbar) erscheint ein Popup, in dem du deine aktuelle Tätigkeit kategorisierst und beschreibst – mit RPG-Gamification, Gartenvisualisierung und psychologischen Interventionen.
+Ein persönliches Produktivitäts-Tracking-Tool für macOS als Menu-Bar-App. Alle 15 Minuten (konfigurierbar) erscheint ein Popup, in dem du deine aktuelle Tätigkeit kategorisierst und beschreibst – mit RPG-Gamification, psychologischen Interventionen und Commitment-Mechanismen.
 
 ---
 
 ## Kernkonzept
 
-Das Prinzip ist radikal einfach: **Was gemessen wird, verändert sich.** Jede Kategorie bekommt ein Gewicht (+1 / 0 / -1), und aus allen Einträgen eines Tages errechnet sich ein **Focus Score** (0–100). Zusätzlich gibt es ein RPG-System mit XP, Gold, Leveln und Achievements, das produktives Verhalten langfristig belohnt.
+**Was gemessen wird, verändert sich.** Jede Kategorie bekommt ein Gewicht (+1 / 0 / -1), und aus allen Einträgen eines Tages errechnet sich ein **Focus Score** (0–100). Zusätzlich gibt es ein RPG-System mit XP, Gold, Leveln und Achievements, das produktives Verhalten langfristig belohnt – und ein Distraction-Debt-System, das Ablenkungskosten direkt sichtbar macht.
 
 ---
 
@@ -20,27 +20,54 @@ Das Prinzip ist radikal einfach: **Was gemessen wird, verändert sich.** Jede Ka
 
 | Kategorie | Gewicht | Symbol |
 |-----------|---------|--------|
-| Produktiv (Umsatzgenerierend) | +1.0 | `chart.line.uptrend` |
+| Umsatzgenerierend | +1.0 | `chart.line.uptrend` |
 | Neutral | 0.0 | `minus.circle` |
-| Umsatzschädigend | -1.0 | `exclamationmark.triangle` |
+| Ablenkung | -1.0 | `exclamationmark.triangle` |
 
 - **Tastenkürzel**: 1, 2, 3 für direkte Kategorie-Auswahl im Popup
+- **Letzten Eintrag wiederholen**: Ein Tap füllt Note + Kategorie aus dem letzten Eintrag vor – kein erneutes Tippen bei langen Focus-Sessions
 - **Smart Defaults**: Wenn die letzten 3 Einträge dieselbe Kategorie hatten, wird diese vorgeschlagen
-- **Bestätigungs-Overlay**: Kurze visuelle Rückmeldung nach dem Speichern (0,7 Sek)
+- **Bestätigungs-Overlay**: Kurze visuelle Rückmeldung nach dem Speichern
+
+### Morning Intention
+
+Jeden Tag nach 8:00 Uhr beim ersten App-Start erscheint ein **Morgen-Popup**:
+
+- **3 Prioritäten**: Was sind die 3 wichtigsten Aufgaben heute?
+- **Vermeidungs-Commitment**: Was wirst du heute aktiv vermeiden? (z. B. Instagram, Slack-Rabbit-Holes)
+- Einmalig pro Tag (wird per UserDefaults getrackt)
+- Kann mit "Später" übersprungen werden
+
+### Evening Debrief
+
+Um **17:30 Uhr** erscheint automatisch ein Tages-Abschluss-Popup:
+
+- **Prioritäten-Checkboxen**: Welche der 3 Prioritäten hast du erledigt? (mit Animation + Strikethrough)
+- **Größter Erfolg**: Freies Textfeld für den besten Moment des Tages
+- **Morgen wiederholen**: Was hat so gut funktioniert, dass es wiederholt werden sollte?
+- Einmalig pro Tag (verhindert wiederholtes Erscheinen nach 17:30)
 
 ### Focus Score
 
-- Berechnung: `(gewichteter Durchschnitt der Kategorien * 50) + 50`
+- Berechnung: `(gewichteter Durchschnitt der Kategorien × 50) + 50`
 - Wertebereich: 0–100
-- Wird täglich neu berechnet und im Popover, im Widget und in der Statistik angezeigt
 - Farbkodierung: Rot (<25), Orange (25–49), Blau (50–74), Grün (75+)
+- Wird täglich neu berechnet und in Popover, Widget und Statistik angezeigt
+
+### Wochenend-Logik
+
+Samstag und Sonntag:
+- Einträge werden **weiterhin gespeichert** (für persönliches Tracking)
+- Fließen aber **nicht** in Focus Score, XP, Gold, Energy oder Streaks ein
+- Fr → Mo gilt als konsekutiver Arbeitstag (Streak-Unterbrechung nur durch fehlende Werktage)
+- MenuBar zeigt "🌴 Wochenende – kein Druck"
 
 ### RPG-Gamification
 
 #### XP & Level
-- **Produktiv**: `Minuten × 2 × Streak-Multiplikator` XP
+- **Umsatzgenerierend**: `Minuten × 2 × Streak-Multiplikator × Flow-Multiplikator` XP
 - **Neutral**: `Minuten ÷ 2 × Streak-Multiplikator` XP
-- **Schädigend**: 0 XP
+- **Ablenkung**: 0 XP
 
 | Level | XP-Schwelle | Standard-Titel | Faith-Titel |
 |-------|------------|----------------|-------------|
@@ -55,20 +82,31 @@ Das Prinzip ist radikal einfach: **Was gemessen wird, verändert sich.** Jede Ka
 | 9 | 55.000 | Legende | Gesegneter |
 
 #### Gold
-- **Produktiv**: `+Minuten` Gold
+- **Umsatzgenerierend**: `+Minuten` Gold
 - **Neutral**: 0
-- **Schädigend**: `-(Minuten × 2)` Gold (kann negativ werden)
+- **Ablenkung**: `-(Minuten × 2)` Gold (Minimum: 0)
 
 #### Energy (0–100)
-- **Produktiv**: `+min(Minuten ÷ 2, 20)`
+- **Umsatzgenerierend**: `+min(Minuten ÷ 2, 20)`
 - **Neutral**: `+2`
-- **Schädigend**: `-(Minuten × 3)`
+- **Ablenkung**: `-(Minuten × 3)`
 - Bei 0 Energy: Streak-Reset oder Streak-Shield (einmalige Schutzwirkung ab 7 Tagen)
 
+#### Flow State ⚡
+- Nach **3 oder mehr aufeinanderfolgenden** produktiven Einträgen: **1,5× XP-Multiplikator**
+- Zurückgesetzt durch einen Ablenkung-Eintrag
+- Neutral-Einträge unterbrechen den Flow **nicht**
+- Im Desktop Widget: grünes **⚡ FLOW** Badge sichtbar
+
 #### Streak & Multiplikatoren
-- Produktiver Streak: Aufeinanderfolgende Tage mit ≥240 min produktiv
 - Streak-Multiplikatoren: 1× (0–2 Tage), 1,25× (3–6), 1,5× (7–13), 1,75× (14–29), 2× (30+)
 - Streak-Shield: Ab 7 Tagen aktiv – schützt einmalig vor Streak-Reset durch Energy-Tod
+
+#### Distraction Debt (Ablenkungsschulden)
+- Jede Ablenkung erzeugt `Minuten × 2` Schulden-Minuten
+- Produktive Arbeit zahlt Schulden 1:1 ab
+- Rote Schulden-Banner erscheinen in Widget und MenuBar
+- Schulden bleiben über Tage erhalten bis vollständig abgebaut
 
 #### Achievements (8 Stück)
 
@@ -78,10 +116,26 @@ Das Prinzip ist radikal einfach: **Was gemessen wird, verändert sich.** Jede Ka
 | streak_3 | Beständig | 3-Tage-Streak | 200 | 50 |
 | streak_7 | Wochenkrieger | 7-Tage-Streak | 500 | 150 |
 | hundred_logs | Detektiv | 100 Einträge gesamt | 1.000 | 300 |
-| perfect_day | Reiner Tag | Kein schädigender Eintrag heute | 300 | 100 |
+| perfect_day | Reiner Tag | Kein Ablenkung-Eintrag heute | 300 | 100 |
 | level_5 | Aufgestiegen | Level 5 erreicht | 500 | 200 |
 | garden_bloom | Garten blüht | Focus Score > 80 | 200 | 75 |
-| no_harmful_week | Reine Woche | 7 Tage ohne schädigende Einträge | 750 | 250 |
+| no_harmful_week | Reine Woche | 7 Tage ohne Ablenkung-Einträge | 750 | 250 |
+
+### Weekly League 🏆
+
+Vergleich der aktuellen 7 Tage mit den vorherigen 7 Tagen im MenuBar Popover:
+- **Focus Score** aktuell vs. vorher (mit ↑/↓ Delta)
+- **Produktive Minuten** aktuell vs. vorher (mit ±Differenz)
+
+### Micro-Intervention (Loop-Breaker)
+
+Erscheint statt des normalen Logging-Popups wenn **2+ Ablenkung-Einträge in Folge** erkannt werden:
+
+- **"Du bist im Ablenkungsmodus"** – klare Situationsdiagnose
+- **Next-Task-Commitment**: Textfeld für die nächste konkrete Aufgabe
+- **[Jetzt loggen]**: Direkt ins normale Logging-Popup weiter
+- **[Durchatmen]**: 60-Sekunden Atem-Timer mit Kreisanimation; danach automatischer Übergang zum Logging
+- Mode-abhängige Texte (Standard vs. Faith)
 
 ### Gartenvisualisierung (GardenView)
 
@@ -93,53 +147,42 @@ Canvas-gezeichneter Garten, der den Focus Score widerspiegelt:
 - **Score 80+**: Voller Blüte, Schmetterlinge, Sterne
 - **Faith-Modus zusätzlich**: Goldene Partikel, spirituelle Symbolik
 
-Verfügbare Größen: `small` (20px), `medium` (80px), `large` (200px)
-
 ### Identitätsmodi (IdentityMode)
 
 Globaler Schalter, der alle UI-Texte, Kategorienamen, Motivationsnachrichten und Leveltitel anpasst:
 
-- **Standard**: Produktivitäts-fokussiert (Steve Jobs-Zitate, Produktivitätsthemen)
+- **Standard**: Produktivitäts-fokussiert (Produktivitätszitate, unternehmerische Sprache)
 - **Faith**: Glaubens- und Berufungs-fokussiert (Bibelverse, Stewardship-Sprache)
 
-Tägliche Impulse rotieren basierend auf dem Datum durch 20 Produktivitätszitate oder 20 Bibelverse.
+Tägliche Impulse rotieren basierend auf dem Datum durch 20 Einträge.
 
-### Loop-Breaker (InterventionViewModel)
+### AI Body Double (Companion)
 
-Psychologisches Interventionssystem bei schädigenden Mustern:
+Pixel-Art-Figur im Desktop Widget: sitzt am Laptop und tippt – animiert.
 
-- Zählt aufeinanderfolgende schädigende Einträge
-- Bei **2+ schädigenden Einträgen** in Folge: Intervention-Popup erscheint statt des normalen Logging-Popups
-- Inhalte:
-  1. **Prompt**: Aufforderung zur Atem-/Gebetsübung
-  2. **Timer**: 60-Sekunden-Countdown mit Kreisanimation
-  3. **Abschluss**: Positives Feedback, dann normales Logging
-- Mode-abhängige Texte ("Fokus-Verlust" vs. "Gaben-Verschwendung")
-
-### Dopamin-Nudge (DopaminMenu)
-
-Erscheint im Logging-Popup wenn Kategorie "Schädigend" gewählt wird:
-
-- 8 kontextuelle Alternativen (z. B. Social Media → 5 min Natur beobachten, YouTube → 15 min spazieren)
-- 5 Aktivitäts-Paarungen (z. B. E-Mails + Kaffee)
-- Auto-Dismiss nach 8 Sekunden, manuell schließbar
-
-### Companion (AICompanion)
-
-Emotionaler Begleiter, dessen Stimmung sich dem Verhalten anpasst:
+- Tipp-Geschwindigkeit spiegelt Companion-Stimmung: happy/proud = schnell, disappointed = langsam
+- Kopf-Nicken, Arm-Bewegung, Augen-Blink (alle ~3,5 Sekunden)
+- Stimmungs-Indikator über dem Kopf (grün / orange / grau)
+- Stimmung basiert auf den letzten 5 Einträgen
 
 | Stimmung | Bedingung |
 |----------|-----------|
-| worried | 3+ schädigende in letzten 5 Einträgen |
-| happy/proud | 4+ produktive in letzten 5 + guter Streak |
+| worried | 3+ Ablenkung in letzten 5 |
+| happy/proud | 4+ produktiv in letzten 5 + guter Streak |
 | disappointed | Energy < 20 |
 | neutral | Sonst |
 
-Generiert mode-abhängige Nachrichten für Session-Start, Intervall-Abschluss, Misserfolge, Erfolge.
+### Dopamin-Nudge (DopaminMenu)
+
+Erscheint im Logging-Popup wenn Kategorie "Ablenkung" gewählt wird:
+
+- Kontextuelle Alternativen (z. B. Social Media → 5 min Natur beobachten)
+- Aktivitäts-Paarungen (z. B. E-Mails + Kaffee)
+- Auto-Dismiss nach 8 Sekunden, manuell schließbar
 
 ### Statistiken
 
-Vier Tabs im Statistik-Fenster (560×650 px):
+Vier Tabs im Statistik-Fenster:
 
 #### Heute
 - Tages-Breakdown: Kategorien mit Balkendiagramm, Minuten und Prozent
@@ -150,29 +193,25 @@ Vier Tabs im Statistik-Fenster (560×650 px):
 
 #### Woche
 - Gestapeltes Balkendiagramm der letzten 7 Tage (Swift Charts)
-- Produktiv-Streak-Badge
-- Kein-schädlicher-Streak-Badge
+- Produktiv-Streak-Badge, Kein-Ablenkung-Streak-Badge
 - Wochendurchschnitts-Score
 
 #### Heatmap
 - GitHub-Stil: Wochentag × Uhrzeit (4 Wochen)
-- Farbintensität nach Aktivitätsvolumen
 - Zeigt produktivste Tageszeiten
 
 #### Profil
-- Level-Badge + Titel
-- XP-Fortschrittsbalken zum nächsten Level
-- Energy-Balken (farbkodiert)
-- Gold-Anzeige
-- Streak + Streak-Shield-Status
-- Companion-Stimmungs-Emoji
-- 2-spaltiges Achievement-Grid (gesperrt: 🔒, entsperrt: 🏆 + Datum)
+- Level-Badge + Titel, XP-Fortschrittsbalken
+- Energy-Balken, Gold, Streak + Shield-Status
+- Distraction Debt Anzeige
+- Companion-Stimmung
+- Achievement-Grid
 
 ### Achievement Toast
 
-Erscheint als Overlay über dem Menu Bar Popover bei:
+Erscheint als Overlay über dem MenuBar Popover bei:
 - Achievement-Freischaltung: 🏆 Name + XP/Gold-Reward
-- Level-Up: ⬆️ neuer Titel + Level-Badge
+- Level-Up: ⬆️ neuer Titel
 
 ### MissionBar
 
@@ -180,24 +219,28 @@ Fortschrittsbalken für das tägliche Produktivitätsziel:
 
 - **Manuell**: Ziel in Stunden einstellbar (1–8h)
 - **Adaptiv**: Automatisch berechnet als 7-Tage-Durchschnitt + 10%
-- Anzeige in Minuten oder "Einheiten" (alle 15 min = 1 Einheit)
-- Mode-abhängige Labels
 
 ### Desktop Widget (FloatingWidget)
 
 Immer-oben-schwebendes Fenster (260px breit):
 
-- **Sichtbar auf allen Spaces** (auch in Fullscreen)
-- Zeigt: Timer-Countdown, Focus Score, Notizfeld, 3 Kategorie-Buttons
-- Licht-Design mit starkem Schatten für Sichtbarkeit auf jedem Desktop
-- Position wird gespeichert und bei App-Start wiederhergestellt
-- Kann verschoben werden (Drag)
-- Kann Key-Window werden (Textfeld-Eingabe möglich) ohne Fokus zu stehlen
+- Sichtbar auf allen Spaces (auch in Fullscreen)
+- Zeigt: Timer-Countdown, ⚡ FLOW-Badge, Focus Score, Body-Double-Companion, Notizfeld, 3 Kategorie-Buttons
+- Distraction-Debt-Banner (rot) wenn Schulden vorhanden
+- Letzten Eintrag wiederholen
+- Position wird gespeichert
+
+### Datenexport
+
+- **Excel-Export**: Automatisch nach jedem Log als `.xlsx`-Datei im Application Support Verzeichnis
+  - Spalten: Datum (DD.MM.YYYY), Uhrzeit (HH:MM), Kategorie, Kommentar, Minuten
+  - Farbkodierung: grün (produktiv), grau (neutral), rot (Ablenkung)
+- **iCloud Kalender**: Jeder Eintrag wird als Kalender-Event angelegt (3 separate Kalender nach Kategorie)
+- **Datenbankbackup**: Export/Import über Einstellungen → Daten
 
 ### Systembewusstsein
 
 - **Sleep/Wake**: Popup erscheint sofort nach System-Wake
-- **App Nap Prevention**: Timer läuft auch im Hintergrund weiter
 - **Idle Detection** (IOKit): Erkennt inaktive Mac-Phasen ≥5 Minuten
 - **Re-Reminder**: Wenn Popup >5 Minuten ignoriert wird, erneuter Sound
 - **Globaler Hotkey**: `Cmd+Shift+T` öffnet Logging-Popup aus jeder App
@@ -206,11 +249,11 @@ Immer-oben-schwebendes Fenster (260px breit):
 
 ## UI-Design-Prinzipien
 
-- **Menu Bar Popover**: Helles Design (Off-White Hintergrund, dunkler Text, blauer Akzent)
-- **Desktop Widget**: Helles Design mit farbigem Top-Balken, starker Schatten
-- **Statistik/Settings**: Dunkles Design (`.preferredColorScheme(.dark)`)
-- **Logging Popup**: Dunkel mit blauen Akzentfarben
-- Durchgehend deutsche Sprache (UI, Fehlermeldungen, Motivationstexte)
+- **MenuBar Popover + Desktop Widget**: Helles Design (Off-White Hintergrund, dunkler Text, blauer Akzent)
+- **Statistik + Einstellungen**: Dunkles Design (`.preferredColorScheme(.dark)`)
+- **Logging-Popup + Intervention**: Dunkel mit blauen Akzentfarben
+- **Morning Intention + Evening Debrief**: Helles Design, konsistent mit MenuBar
+- Durchgehend deutsche Sprache
 
 ---
 
@@ -219,9 +262,18 @@ Immer-oben-schwebendes Fenster (260px breit):
 ```
 TimeEntry
 ├── timestamp: Date
-├── categoryValue: Int (1=Produktiv, 2=Neutral, 3=Schädigend)
+├── categoryValue: Int (1=Umsatzgenerierend, 2=Neutral, 3=Ablenkung)
 ├── note: String (Pflicht)
 └── intervalMinutes: Int
+
+DailyIntention
+├── date: Date (Tagesbeginn, Mitternacht)
+├── priority1/2/3: String
+├── avoidance: String
+├── priority1/2/3Done: Bool
+├── biggestWin: String
+├── whatToRepeat: String
+└── debriefCompleted: Bool
 
 AppSettings
 ├── intervalMinutes: Int
@@ -239,7 +291,9 @@ PlayerProfile
 ├── streakDays: Int
 ├── streakShieldActive: Bool
 ├── lastActiveDate: Date?
-└── companionMoodRaw: String
+├── companionMoodRaw: String
+├── debtMinutes: Int
+└── consecutiveProductiveEntries: Int
 
 Achievement
 ├── achievementId: String (unique)
@@ -252,7 +306,6 @@ Achievement
 ```
 
 **Speicherort**: `~/Library/Application Support/TimeAudit/default.store` (SQLite via SwiftData)
-**Backup/Restore**: Über Einstellungen → Daten
 
 ---
 
@@ -260,32 +313,36 @@ Achievement
 
 ```
 TimeAudit/
-├── TimeAuditApp.swift              # @main, MenuBarExtra-Scene
-├── AppDelegate.swift               # Lifecycle, Panels, Hotkeys, Monitoring
+├── TimeAuditApp.swift              # @main, MenuBarExtra-Scene, Timer-Observation
+├── AppDelegate.swift               # Lifecycle, Panels, Hotkeys, Monitoring, Timers
 │
 ├── Models/
 │   ├── TimeEntry.swift             # Haupt-Datensatz
 │   ├── Category.swift              # ActivityCategory enum (3 Kategorien)
+│   ├── DailyIntention.swift        # Morning/Evening Intention (SwiftData)
 │   ├── AppSettings.swift           # Einstellungen (SwiftData)
-│   ├── PlayerProfile.swift         # RPG-Spielerprofil (SwiftData)
+│   ├── PlayerProfile.swift         # RPG-Spielerprofil + Debt + Flow State (SwiftData)
 │   ├── Achievement.swift           # Achievements (SwiftData)
 │   ├── IdentityMode.swift          # Standard/Faith enum
-│   └── GameModels.swift            # Level-Schwellen, Nudges, Quotes, Moods
+│   └── GameModels.swift            # Level-Schwellen, Nudges, Moods
 │
 ├── ViewModels/
 │   ├── TimerViewModel.swift        # Intervall-Timer, Wake-Handling
-│   ├── LoggingViewModel.swift      # Kategorie-Auswahl, Smart Defaults
-│   ├── StatisticsViewModel.swift   # Aggregation, Score, Streaks, Heatmap
+│   ├── LoggingViewModel.swift      # Kategorie-Auswahl, Smart Defaults, Repeat-Last
+│   ├── StatisticsViewModel.swift   # Score, Streaks, Heatmap, Weekly League
 │   ├── SettingsViewModel.swift     # Einstellungs-Persistenz
-│   ├── InterventionViewModel.swift # Loop-Breaker-Logik
-│   └── GameViewModel.swift         # RPG-State, Achievement-Checks, Toasts
+│   ├── IntentionViewModel.swift    # Morning/Evening Intention Logik
+│   ├── InterventionViewModel.swift # Micro-Intervention Logik
+│   └── GameViewModel.swift         # RPG-State, Flow State, Achievements, Toasts
 │
 ├── Views/
 │   ├── MenuBarView.swift           # Haupt-Popover (helles Design)
 │   ├── LoggingPopupView.swift      # Logging-Popup (dunkles Design)
 │   ├── FloatingWidgetView.swift    # Desktop Widget (helles Design)
+│   ├── MorningIntentionView.swift  # Morgen-Prioritäten-Popup
+│   ├── EveningDebriefView.swift    # Abend-Debrief-Popup
 │   ├── SettingsView.swift          # Einstellungen
-│   ├── InterventionView.swift      # Loop-Breaker-Popup
+│   ├── InterventionView.swift      # Micro-Intervention Popup
 │   ├── AchievementToastView.swift  # Achievement/Level-Up Toast
 │   ├── ProfileView.swift           # RPG-Profil-Tab
 │   └── Statistics/
@@ -295,24 +352,25 @@ TimeAudit/
 │       └── HeatmapView.swift       # Heatmap-Tab
 │
 ├── Components/
-│   ├── FloatingPanel.swift         # NSPanel-Subklasse für Logging-Popup
-│   ├── FloatingWidget.swift        # NSPanel-Subklasse für Desktop Widget
+│   ├── FloatingPanel.swift         # NSPanel für Logging-Popup
+│   ├── FloatingWidget.swift        # NSPanel für Desktop Widget
+│   ├── BodyDoubleView.swift        # Canvas Pixel-Art Companion (44px)
 │   ├── GardenView.swift            # Canvas-Garten-Visualisierung
 │   ├── MissionBar.swift            # Tagesziel-Fortschrittsbalken
 │   ├── FocusScoreView.swift        # Kreisförmiger Score-Indikator
-│   ├── StreakBadge.swift           # Streak-Anzeige (Flamme + Tage)
+│   ├── StreakBadge.swift           # Streak-Anzeige
 │   ├── DailyImpulseView.swift      # Zitat/Bibelvers-Karte
-│   ├── DayBlocksView.swift         # Timeline-Blöcke (15-min-Raster)
+│   ├── DayBlocksView.swift         # Timeline-Blöcke
 │   └── CategoryButton.swift        # Kategorie-Auswahl-Button
 │
 ├── Services/
-│   ├── GameEngine.swift            # XP/Gold/Energy/Level-Berechnung
-│   ├── DopaminMenu.swift           # Nudge-Vorschläge für schädigende Einträge
-│   ├── AICompanion.swift           # Stimmungs- und Begleiter-Nachrichten
+│   ├── GameEngine.swift            # XP/Gold/Energy/Debt/FlowState/Level-Logik
 │   ├── IdentityProvider.swift      # Mode-abhängige Strings, Daily Impulses
+│   ├── CalendarExporter.swift      # EventKit iCloud Kalender-Integration
+│   ├── XLSXWriter.swift            # Pure-Swift .xlsx Auto-Export
 │   ├── IdleDetector.swift          # IOKit Idle-Time-Überwachung
 │   ├── SleepWakeMonitor.swift      # Sleep/Wake-Events
-│   ├── CSVExporter.swift           # CSV-Export
+│   ├── CSVExporter.swift           # CSV-Export (Legacy)
 │   └── SoundPlayer.swift           # Benachrichtigungstöne
 │
 └── Protocols/
@@ -324,23 +382,38 @@ TimeAudit/
 ## Datenfluss
 
 ```
+App-Start (nach 8:00 Uhr)
+  └→ IntentionViewModel.checkMorning()
+       └→ MorningIntentionView (wenn noch keine Intention heute)
+
 Eintrag gespeichert (TimeEntry)
   ↓
 AppDelegate.onLogSaved()
-  ├→ TimerViewModel.didLog()              → Timer zurücksetzen
-  ├→ InterventionViewModel.recordCategory() → Schädigungs-Muster prüfen
+  ├→ TimerViewModel.didLog()               → Timer zurücksetzen
+  ├→ InterventionViewModel.recordCategory() → 2× Ablenkung → Micro-Intervention
   ├→ GameViewModel.processEntry()
   │   ├→ GameEngine.updateStreak()
-  │   ├→ GameEngine.applyEntry()          → XP, Gold, Energy, Level-Up
-  │   ├→ GameEngine.checkAchievements()   → Achievements freischalten
-  │   └→ AICompanion.updateMood()         → Begleiter-Stimmung aktualisieren
+  │   ├→ GameEngine.applyEntry()
+  │   │   ├→ XP (+ Streak-Multiplikator + Flow-State-1,5×)
+  │   │   ├→ Gold / Energy
+  │   │   ├→ consecutiveProductiveEntries verfolgen
+  │   │   └→ Distraction Debt aktualisieren
+  │   ├→ GameEngine.checkAchievements()
+  │   └→ AICompanion.updateMood()
+  ├→ CalendarExporter.createEvent()        → iCloud Kalender
+  ├→ XLSXWriter.export()                  → Excel-Datei
   └→ StatisticsViewModel.refresh()
-       ├→ computeToday()                  → Kategorien-Minuten, Focus Score
-       ├→ computeWeekly()                 → 7-Tage-Daten
-       ├→ computeStreaks()                 → Produktiv- und No-Harmful-Streak
-       ├→ computeBestWorstHour()          → Beste/schlechteste Stunde
-       ├→ computeHeatmap()                → 4-Wochen-Grid
-       └→ computeMissionBar()             → Tagesziel-Fortschritt
+       ├→ computeToday()       → Kategorien-Minuten, Focus Score
+       ├→ computeWeekly()      → 7-Tage-Daten
+       ├→ computeStreaks()      → Produktiv-Streak, No-Ablenkung-Streak
+       ├→ computeBestWorstHour()
+       ├→ computeHeatmap()     → 4-Wochen-Grid
+       ├→ computeMissionBar()  → Tagesziel-Fortschritt
+       └→ computeWeeklyLeague() → Aktuelle vs. vorherige 7 Tage
+
+17:30 Uhr Timer
+  └→ IntentionViewModel.checkEvening()
+       └→ EveningDebriefView (einmalig, wenn Intention vorhanden + kein Debrief)
 ```
 
 ---
@@ -350,11 +423,11 @@ AppDelegate.onLogSaved()
 - **SwiftUI** + **MenuBarExtra** (macOS 14+)
 - **SwiftData** – lokale Persistenz (SQLite)
 - **Swift Charts** – Wochen-Balkendiagramm
+- **EventKit** – iCloud Kalender-Integration
 - **IOKit** – Idle-Time-Erkennung
-- **SMAppService** – Launch at Login (macOS 13+)
 - **NSPanel** – Floating Panels für Popups und Widget
-- **NSVisualEffectView** – Blur-Hintergrund für Widget
-- **Canvas / GraphicsContext** – Garten-Visualisierung
+- **Canvas / GraphicsContext** – Garten + Body-Double-Visualisierung
+- **ZIP STORED + Open XML** – Pure-Swift .xlsx Export (keine externen Dependencies)
 - **MVVM** – Architekturmuster
 
 ---
@@ -384,12 +457,13 @@ AppDelegate.onLogSaved()
 | Adaptives Ziel | An/Aus | Aus |
 | Desktop Widget | An/Aus | Aus |
 | Beim Login starten | An/Aus | Aus |
+| Kalender-Integration | Autorisierung via Einstellungen | – |
 
 ---
 
 ## Datenschutz
 
-Alle Daten bleiben **lokal** auf dem Gerät. Keine Cloud, keine externen APIs, kein Tracking.
+Alle Daten bleiben **lokal** auf dem Gerät. Keine Cloud, keine externen APIs, kein Tracking. Die iCloud Kalender-Integration nutzt EventKit direkt auf dem Gerät.
 
 ---
 

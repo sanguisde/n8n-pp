@@ -367,7 +367,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Evening Debrief Panel
 
     private func startEveningTimer() {
-        // Check every minute if it's 17:30
+        // Check every minute if it's past 17:30
         eveningTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             guard let self else { return }
             let calendar = Calendar.current
@@ -375,14 +375,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let hour = calendar.component(.hour, from: now)
             let minute = calendar.component(.minute, from: now)
 
-            if hour == 17 && minute >= 30 {
-                if let context = self.modelContainer?.mainContext {
-                    self.intentionVM.checkEvening(context: context)
-                    if self.intentionVM.shouldShowEveningDebrief {
-                        DispatchQueue.main.async {
-                            self.showEveningDebriefPanel()
-                        }
-                    }
+            guard hour == 17 && minute >= 30 else { return }
+
+            DispatchQueue.main.async {
+                guard let context = self.modelContainer?.mainContext else { return }
+                self.intentionVM.checkEvening(context: context)
+                if self.intentionVM.shouldShowEveningDebrief {
+                    self.showEveningDebriefPanel()
                 }
             }
         }

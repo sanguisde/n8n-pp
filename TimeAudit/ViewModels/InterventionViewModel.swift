@@ -75,17 +75,12 @@ final class InterventionViewModel {
         }
     }
 
-    /// Complete the intervention
+    /// Complete the intervention (view observes interventionCompleted and handles dismiss)
     func completeIntervention() {
         timer?.invalidate()
         timer = nil
         isTimerRunning = false
         interventionCompleted = true
-
-        // Reset after a short delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-            self?.dismiss()
-        }
     }
 
     /// Dismiss the intervention (skip or after completion)

@@ -42,13 +42,21 @@ final class IntentionViewModel {
     }
 
     /// Called from the evening timer (17:30). Shows debrief if intention exists but not completed.
+    /// Prevents repeated shows within the same day.
     func checkEvening(context: ModelContext) {
         let calendar = Calendar.current
+
+        // Only prompt once per day (timer fires every minute after 17:30)
+        let lastKey = "lastEveningDebriefPromptDate"
+        let lastShown = UserDefaults.standard.object(forKey: lastKey) as? Date
+        if let lastShown, calendar.isDateInToday(lastShown) { return }
+
         let today = calendar.startOfDay(for: Date())
         loadTodayIntention(today: today, context: context)
 
         if let intention = todayIntention, !intention.debriefCompleted {
             shouldShowEveningDebrief = true
+            UserDefaults.standard.set(Date(), forKey: lastKey)
         }
     }
 

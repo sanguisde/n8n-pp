@@ -34,7 +34,6 @@ struct GardenView: View {
 
     var body: some View {
         Canvas { context, cgSize in
-            let w = cgSize.width
             let h = cgSize.height
             let groundY = h * 0.82
 
