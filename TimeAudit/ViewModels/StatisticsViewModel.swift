@@ -34,6 +34,20 @@ final class StatisticsViewModel {
     /// Least productive hour of the day (0-23)
     var worstHour: Int?
 
+    // MARK: - Weekly League
+
+    struct WeeklySummary {
+        var focusScore: Int
+        var productiveMinutes: Int
+        var totalEntries: Int
+    }
+
+    /// Summary of the current 7 days
+    var currentWeekSummary: WeeklySummary = WeeklySummary(focusScore: 50, productiveMinutes: 0, totalEntries: 0)
+
+    /// Summary of the previous 7 days
+    var lastWeekSummary: WeeklySummary = WeeklySummary(focusScore: 50, productiveMinutes: 0, totalEntries: 0)
+
     // MARK: - Weekly Data
 
     /// Weekly aggregated data: (date, category, minutes)
@@ -62,6 +76,7 @@ final class StatisticsViewModel {
         computeBestWorstHour(entries: entries)
         computeHeatmap(entries: entries)
         computeMissionBar(entries: entries)
+        computeWeeklyLeague(entries: entries)
     }
 
     /// Compute today's category breakdown and focus score
@@ -232,6 +247,33 @@ final class StatisticsViewModel {
         } else {
             adaptiveGoalMinutes = 240 // Default 4 hours
         }
+    }
+
+    // MARK: - Weekly League
+
+    private func computeWeeklyLeague(entries: [TimeEntry]) {
+        let calendar = Calendar.current
+        let now = Date()
+        let sevenDaysAgo = calendar.date(byAdding: .day, value: -7, to: now)!
+        let fourteenDaysAgo = calendar.date(byAdding: .day, value: -14, to: now)!
+
+        let currentEntries = entries.filter { $0.timestamp >= sevenDaysAgo }
+        let lastEntries = entries.filter { $0.timestamp >= fourteenDaysAgo && $0.timestamp < sevenDaysAgo }
+
+        currentWeekSummary = buildSummary(from: currentEntries)
+        lastWeekSummary = buildSummary(from: lastEntries)
+    }
+
+    private func buildSummary(from entries: [TimeEntry]) -> WeeklySummary {
+        var byCategory: [ActivityCategory: Int] = [:]
+        for entry in entries {
+            if let cat = ActivityCategory(rawValue: entry.categoryValue) {
+                byCategory[cat, default: 0] += entry.intervalMinutes
+            }
+        }
+        let productive = byCategory[.productive] ?? 0
+        let score = calculateFocusScore(minutesByCategory: byCategory)
+        return WeeklySummary(focusScore: score, productiveMinutes: productive, totalEntries: entries.count)
     }
 
     // MARK: - Focus Score Calculation

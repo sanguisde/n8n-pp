@@ -6,7 +6,7 @@ import Foundation
 protocol GameEngineProtocol {
 
     /// Calculates XP gained for a logged entry.
-    func xpGained(category: ActivityCategory, minutes: Int, streakMultiplier: Double) -> Int
+    func xpGained(category: ActivityCategory, minutes: Int, streakMultiplier: Double, flowState: Bool) -> Int
 
     /// Calculates Gold gained (or lost) for a logged entry.
     func goldGained(category: ActivityCategory, minutes: Int) -> Int

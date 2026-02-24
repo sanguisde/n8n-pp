@@ -11,14 +11,15 @@ final class GameEngine: GameEngineProtocol {
 
     // MARK: - XP
 
-    func xpGained(category: ActivityCategory, minutes: Int, streakMultiplier: Double = 1.0) -> Int {
+    func xpGained(category: ActivityCategory, minutes: Int, streakMultiplier: Double = 1.0, flowState: Bool = false) -> Int {
         let base: Int
         switch category {
         case .productive: base = minutes * 2
         case .neutral:    base = minutes / 2
         case .harmful:    return 0
         }
-        return max(1, Int(Double(base) * streakMultiplier))
+        let flowMultiplier = flowState ? 1.5 : 1.0
+        return max(1, Int(Double(base) * streakMultiplier * flowMultiplier))
     }
 
     // MARK: - Gold
@@ -47,8 +48,19 @@ final class GameEngine: GameEngineProtocol {
     func applyEntry(category: ActivityCategory, minutes: Int, to profile: PlayerProfile) -> Bool {
         let streakMultiplier = streakMultiplier(for: profile.streakDays)
 
-        // XP
-        let xp = xpGained(category: category, minutes: minutes, streakMultiplier: streakMultiplier)
+        // Track consecutive productive entries for Flow State
+        switch category {
+        case .productive:
+            profile.consecutiveProductiveEntries += 1
+        case .harmful:
+            profile.consecutiveProductiveEntries = 0
+        case .neutral:
+            break // neutral doesn't break or build flow
+        }
+        let isInFlowState = profile.consecutiveProductiveEntries >= 3
+
+        // XP (with optional Flow State 1.5× bonus)
+        let xp = xpGained(category: category, minutes: minutes, streakMultiplier: streakMultiplier, flowState: isInFlowState)
         profile.xp += xp
 
         // Gold

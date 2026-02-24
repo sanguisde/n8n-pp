@@ -48,6 +48,8 @@ struct MenuBarView: View {
                 divider
                 missionBarSection
                 divider
+                weeklyLeagueSection
+                divider
                 insightsSection
                 divider
                 actionsSection
@@ -300,6 +302,56 @@ struct MenuBarView: View {
         )
         .padding(.horizontal, 14)
         .padding(.vertical, 6)
+    }
+
+    // MARK: - Weekly League
+
+    private var weeklyLeagueSection: some View {
+        let current = statsVM.currentWeekSummary
+        let last = statsVM.lastWeekSummary
+        let delta = current.focusScore - last.focusScore
+        let deltaColor: Color = delta >= 0 ? Color(red: 0.1, green: 0.65, blue: 0.3) : .red
+        let deltaSymbol = delta >= 0 ? "↑" : "↓"
+
+        return HStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("🏆 Weekly League")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(textSec)
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text("\(current.focusScore)")
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundStyle(scoreColor)
+                    Text("\(deltaSymbol)\(abs(delta))")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(deltaColor)
+                }
+                Text("vs. Vorwoche: \(last.focusScore)")
+                    .font(.system(size: 10))
+                    .foregroundStyle(textTer)
+            }
+
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("Produktiv")
+                    .font(.system(size: 9))
+                    .foregroundStyle(textTer)
+                Text(StatisticsViewModel.formatMinutes(current.productiveMinutes))
+                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(textPrimary)
+                if last.productiveMinutes > 0 {
+                    let prodDelta = current.productiveMinutes - last.productiveMinutes
+                    let prodSymbol = prodDelta >= 0 ? "+" : ""
+                    Text("\(prodSymbol)\(StatisticsViewModel.formatMinutes(prodDelta))")
+                        .font(.system(size: 9))
+                        .foregroundStyle(prodDelta >= 0 ? Color(red: 0.1, green: 0.65, blue: 0.3) : .red)
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(bg)
     }
 
     // MARK: - Insights

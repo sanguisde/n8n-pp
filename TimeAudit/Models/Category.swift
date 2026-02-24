@@ -7,7 +7,7 @@ import SwiftUI
 enum ActivityCategory: Int, CaseIterable, Identifiable, Codable {
     case productive = 1    // Umsatzgenerierend
     case neutral = 2       // Neutral
-    case harmful = 3       // Umsatzschaedigend
+    case harmful = 3       // Ablenkung
 
     var id: Int { rawValue }
 
@@ -16,7 +16,7 @@ enum ActivityCategory: Int, CaseIterable, Identifiable, Codable {
         switch self {
         case .productive: return "Umsatzgenerierend"
         case .neutral: return "Neutral"
-        case .harmful: return "Umsatzschaedigend"
+        case .harmful: return "Ablenkung"
         }
     }
 

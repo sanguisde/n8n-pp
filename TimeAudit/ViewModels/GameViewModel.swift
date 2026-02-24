@@ -112,6 +112,11 @@ final class GameViewModel {
     /// Remaining Distraction Debt in minutes (0 = debt-free).
     var debtMinutes: Int { playerProfile?.debtMinutes ?? 0 }
 
+    /// True when 3+ consecutive productive entries have been logged (1.5× XP active).
+    var isInFlowState: Bool {
+        (playerProfile?.consecutiveProductiveEntries ?? 0) >= 3
+    }
+
     var energyColor: Color {
         let e = playerProfile?.energy ?? 100
         if e >= 70 { return .green }

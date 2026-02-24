@@ -26,7 +26,7 @@ struct TimeAuditApp: App {
                 onOpenStatistics: { appDelegate.showStatisticsWindow() },
                 onOpenSettings: { appDelegate.showSettingsWindow() }
             )
-            .modelContainer(for: [TimeEntry.self, AppSettings.self, PlayerProfile.self, Achievement.self])
+            .modelContainer(for: [TimeEntry.self, AppSettings.self, PlayerProfile.self, Achievement.self, DailyIntention.self])
             .onAppear {
                 observeTimerPopup()
             }

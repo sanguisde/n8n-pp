@@ -2,14 +2,15 @@ import SwiftUI
 
 // MARK: - Intervention View
 
-/// Loop-Breaker popup shown when 2 consecutive harmful logs are detected.
-/// Offers a 1-minute breathing/prayer timer to break the negative pattern.
+/// Micro-Intervention popup shown when 2 consecutive harmful logs are detected.
+/// Asks for a next-task commitment and offers a breathing timer to break the pattern.
 struct InterventionView: View {
     @Bindable var interventionVM: InterventionViewModel
     let identityProvider: IdentityProvider
     let onDismiss: () -> Void
 
     @State private var breathingPhase: Double = 0
+    @FocusState private var nextTaskFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -52,40 +53,60 @@ struct InterventionView: View {
 
     private var warningHeader: some View {
         VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                ForEach(0..<min(interventionVM.consecutiveHarmfulCount, 5), id: \.self) { _ in
+                    Circle()
+                        .fill(.red.opacity(0.7))
+                        .frame(width: 8, height: 8)
+                }
+            }
+
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 32))
+                .font(.system(size: 28))
                 .foregroundStyle(.orange)
 
-            Text(identityProvider.interventionTitle)
+            Text("Du bist im Ablenkungsmodus")
                 .font(.system(size: 16, weight: .bold))
                 .foregroundStyle(.white)
+
+            Text("\(interventionVM.consecutiveHarmfulCount)× Ablenkung in Folge")
+                .font(.system(size: 11))
+                .foregroundStyle(.red.opacity(0.7))
         }
-        .padding(.top, 28)
+        .padding(.top, 24)
     }
 
     // MARK: - Prompt View
 
     private var promptView: some View {
-        VStack(spacing: 16) {
-            Text(identityProvider.interventionMessage)
-                .font(.system(size: 14))
-                .foregroundStyle(.white.opacity(0.8))
-                .multilineTextAlignment(.center)
+        VStack(spacing: 14) {
+            Text("Was machst du als nächstes?")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.9))
+
+            // Next-task commitment field
+            TextField("Deine nächste konkrete Aufgabe…", text: $interventionVM.nextTaskText)
+                .textFieldStyle(.plain)
+                .font(.system(size: 12))
+                .foregroundStyle(.white)
+                .focused($nextTaskFocused)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.white.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                )
                 .padding(.horizontal, 24)
 
-            // Visual indicator of consecutive harmful logs
-            HStack(spacing: 8) {
-                ForEach(0..<interventionVM.consecutiveHarmfulCount, id: \.self) { _ in
-                    Circle()
-                        .fill(.red.opacity(0.6))
-                        .frame(width: 10, height: 10)
-                }
-            }
-
-            Text("\(interventionVM.consecutiveHarmfulCount)x hintereinander")
+            Text(identityProvider.interventionMessage)
                 .font(.system(size: 11))
-                .foregroundStyle(.red.opacity(0.7))
+                .foregroundStyle(.white.opacity(0.5))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
         }
+        .onAppear { nextTaskFocused = true }
     }
 
     // MARK: - Timer View
@@ -146,36 +167,56 @@ struct InterventionView: View {
     private var actionButtons: some View {
         VStack(spacing: 8) {
             if !interventionVM.isTimerRunning {
-                Button(action: {
-                    interventionVM.startTimer()
-                }) {
-                    HStack(spacing: 8) {
-                        Image(systemName: identityProvider.mode == .faith ? "hands.sparkles" : "wind")
-                        Text(identityProvider.interventionActionLabel)
+                HStack(spacing: 10) {
+                    // Primary: commit and log now
+                    Button(action: {
+                        interventionVM.dismiss()
+                        onDismiss()
+                    }) {
+                        Label("Jetzt loggen", systemImage: "arrow.right.circle.fill")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(
+                                LinearGradient(
+                                    colors: [Color(red: 0.3, green: 0.4, blue: 0.95), Color(red: 0.2, green: 0.3, blue: 0.8)],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(
-                        LinearGradient(
-                            colors: [.blue.opacity(0.5), .purple.opacity(0.4)],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .buttonStyle(.plain)
+                    .keyboardShortcut(.return, modifiers: [])
+
+                    // Secondary: breathing break
+                    Button(action: {
+                        interventionVM.startTimer()
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: identityProvider.mode == .faith ? "hands.sparkles" : "wind")
+                            Text(identityProvider.interventionActionLabel)
+                        }
+                        .font(.system(size: 12))
+                        .foregroundStyle(.white.opacity(0.8))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(Color.white.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.white.opacity(0.15), lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
 
             Button(action: {
                 interventionVM.dismiss()
                 onDismiss()
             }) {
-                Text("Ueberspringen")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.white.opacity(0.4))
+                Text("Überspringen")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.white.opacity(0.3))
             }
             .buttonStyle(.plain)
         }

@@ -16,6 +16,9 @@ final class PlayerProfile {
     /// Harmful entry → +minutes×2. Productive entry → −minutes (floor 0).
     var debtMinutes: Int
 
+    /// Consecutive productive entries for Flow State detection (resets on harmful).
+    var consecutiveProductiveEntries: Int
+
     init(
         xp: Int = 0,
         gold: Int = 0,
@@ -25,7 +28,8 @@ final class PlayerProfile {
         streakShieldActive: Bool = false,
         lastActiveDate: Date? = nil,
         companionMood: CompanionMood = .neutral,
-        debtMinutes: Int = 0
+        debtMinutes: Int = 0,
+        consecutiveProductiveEntries: Int = 0
     ) {
         self.xp = xp
         self.gold = gold
@@ -36,6 +40,7 @@ final class PlayerProfile {
         self.lastActiveDate = lastActiveDate
         self.companionMoodRaw = companionMood.rawValue
         self.debtMinutes = debtMinutes
+        self.consecutiveProductiveEntries = consecutiveProductiveEntries
     }
 
     var companionMood: CompanionMood {

@@ -28,6 +28,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let statsVM = StatisticsViewModel()
     let settingsVM = SettingsViewModel()
     let interventionVM = InterventionViewModel()
+    let intentionVM = IntentionViewModel()
 
     /// Identity provider for mode-dependent strings
     let identityProvider = IdentityProvider()
@@ -37,6 +38,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// SwiftData model container (shared)
     var modelContainer: ModelContainer?
+
+    /// Panels for morning/evening popups
+    private var morningPanel: FloatingPanel<AnyView>?
+    private var eveningPanel: FloatingPanel<AnyView>?
+    private var eveningTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Setup SwiftData – on schema migration failure, wipe the store and start fresh
@@ -73,6 +79,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         sleepWakeMonitor.start()
 
+        // Check morning intention popup (after 8:00 AM on first launch)
+        if let context = modelContainer?.mainContext {
+            intentionVM.checkMorning(context: context)
+            if intentionVM.shouldShowMorningPopup {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                    self?.showMorningIntentionPanel()
+                }
+            }
+        }
+
+        // Schedule evening debrief check (17:30)
+        startEveningTimer()
+
         // Show desktop widget if enabled
         if settingsVM.widgetEnabled {
             showWidget()
@@ -100,7 +119,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private static func makeModelContainer() -> ModelContainer {
-        let schema = Schema([TimeEntry.self, AppSettings.self, PlayerProfile.self, Achievement.self])
+        let schema = Schema([TimeEntry.self, AppSettings.self, PlayerProfile.self, Achievement.self, DailyIntention.self])
         do {
             return try ModelContainer(for: schema)
         } catch {
@@ -324,5 +343,64 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         timerVM.stop()
         idleDetector.stopPolling()
         sleepWakeMonitor.stop()
+        eveningTimer?.invalidate()
+    }
+
+    // MARK: - Morning Intention Panel
+
+    func showMorningIntentionPanel() {
+        guard let container = modelContainer else { return }
+
+        if morningPanel == nil || !(morningPanel?.isVisible ?? false) {
+            let view = MorningIntentionView(
+                intentionVM: intentionVM
+            ) { [weak self] in
+                self?.morningPanel?.dismiss()
+            }
+            .modelContainer(container)
+
+            morningPanel = FloatingPanel(contentView: AnyView(view))
+        }
+        morningPanel?.present()
+    }
+
+    // MARK: - Evening Debrief Panel
+
+    private func startEveningTimer() {
+        // Check every minute if it's 17:30
+        eveningTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            let calendar = Calendar.current
+            let now = Date()
+            let hour = calendar.component(.hour, from: now)
+            let minute = calendar.component(.minute, from: now)
+
+            if hour == 17 && minute >= 30 {
+                if let context = self.modelContainer?.mainContext {
+                    self.intentionVM.checkEvening(context: context)
+                    if self.intentionVM.shouldShowEveningDebrief {
+                        DispatchQueue.main.async {
+                            self.showEveningDebriefPanel()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    func showEveningDebriefPanel() {
+        guard let container = modelContainer else { return }
+
+        if eveningPanel == nil || !(eveningPanel?.isVisible ?? false) {
+            let view = EveningDebriefView(
+                intentionVM: intentionVM
+            ) { [weak self] in
+                self?.eveningPanel?.dismiss()
+            }
+            .modelContainer(container)
+
+            eveningPanel = FloatingPanel(contentView: AnyView(view))
+        }
+        eveningPanel?.present()
     }
 }

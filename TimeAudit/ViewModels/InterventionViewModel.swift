@@ -14,6 +14,9 @@ final class InterventionViewModel {
     /// Whether the intervention popup should be shown
     var shouldShowIntervention: Bool = false
 
+    /// Next task the user commits to (entered in the intervention popup)
+    var nextTaskText: String = ""
+
     /// Whether the 1-minute timer is running
     var isTimerRunning: Bool = false
 
@@ -93,6 +96,7 @@ final class InterventionViewModel {
         isTimerRunning = false
         interventionCompleted = false
         timerSecondsRemaining = 60
+        nextTaskText = ""
         // Don't reset consecutiveHarmfulCount - it resets when a non-harmful category is logged
     }
 

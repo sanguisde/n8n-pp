@@ -113,9 +113,20 @@ struct FloatingWidgetView: View {
     private var headerRow: some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 1) {
-                Text("Nächstes Log")
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundStyle(textSecondary)
+                HStack(spacing: 4) {
+                    Text("Nächstes Log")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(textSecondary)
+                    if gameVM.isInFlowState {
+                        Text("⚡ FLOW")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color(red: 0.3, green: 0.7, blue: 0.3))
+                            .clipShape(Capsule())
+                    }
+                }
                 Text(timerLabel)
                     .font(.system(size: 20, weight: .bold, design: .monospaced))
                     .foregroundStyle(timerColor)
