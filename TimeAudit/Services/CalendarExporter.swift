@@ -11,29 +11,19 @@ final class CalendarExporter {
 
     private let store = EKEventStore()
 
-    // Calendar names per category
-    private let calendarName: [ActivityCategory: String] = [
-        .productive: "TimeAudit – Umsatzgenerierend",
-        .neutral:    "TimeAudit – Neutral",
-        .harmful:    "TimeAudit – Schädlich",
-    ]
-
-    // Calendar colors (green / gray / red)
-    private let calendarColor: [ActivityCategory: CGColor] = [
-        .productive: CGColor(red: 0.13, green: 0.69, blue: 0.30, alpha: 1),
-        .neutral:    CGColor(red: 0.55, green: 0.55, blue: 0.55, alpha: 1),
-        .harmful:    CGColor(red: 0.90, green: 0.22, blue: 0.21, alpha: 1),
-    ]
-
     // MARK: - Authorization
 
+    /// True for any "granted" state, future-proof against new enum cases in macOS 26+.
     var isAuthorized: Bool {
-        EKEventStore.authorizationStatus(for: .event) == .fullAccess ||
-        EKEventStore.authorizationStatus(for: .event) == .writeOnly
+        let s = EKEventStore.authorizationStatus(for: .event)
+        return s != .notDetermined && s != .restricted && s != .denied
     }
 
     func requestAccess(completion: @escaping (Bool) -> Void) {
-        store.requestWriteOnlyAccessToEvents { granted, _ in
+        store.requestWriteOnlyAccessToEvents { [weak self] granted, error in
+            if let error { print("[Cal] requestAccess error: \(error)") }
+            // Refresh store sources after permission is granted
+            if granted { self?.store.refreshSourcesIfNecessary() }
             DispatchQueue.main.async { completion(granted) }
         }
     }
@@ -41,46 +31,95 @@ final class CalendarExporter {
     // MARK: - Create Event
 
     func createEvent(for entry: TimeEntry) {
-        guard isAuthorized else { return }
+        guard isAuthorized else {
+            print("[Cal] skipped – not authorized (status: \(EKEventStore.authorizationStatus(for: .event).rawValue))")
+            return
+        }
         guard let cat = ActivityCategory(rawValue: entry.categoryValue) else { return }
-        guard let calendar = getOrCreateCalendar(for: cat) else { return }
+
+        let calendar: EKCalendar
+        do {
+            calendar = try getOrCreateCalendar(for: cat)
+        } catch {
+            print("[Cal] getOrCreateCalendar failed: \(error)")
+            return
+        }
 
         let event       = EKEvent(eventStore: store)
-        event.title     = entry.note
+        event.title     = entry.note.isEmpty ? cat.displayName : entry.note
         event.startDate = entry.timestamp
         event.endDate   = Calendar.current.date(
-            byAdding: .minute, value: entry.intervalMinutes, to: entry.timestamp
+            byAdding: .minute, value: max(1, entry.intervalMinutes), to: entry.timestamp
         ) ?? entry.timestamp
         event.calendar  = calendar
-        event.notes     = cat.displayName
+        event.notes     = "TimeAudit · \(cat.displayName)"
 
-        try? store.save(event, span: .thisEvent, commit: true)
+        do {
+            try store.save(event, span: .thisEvent, commit: true)
+            print("[Cal] event saved: \"\(event.title ?? "")\" in \(calendar.title)")
+        } catch {
+            print("[Cal] save event failed: \(error)")
+        }
     }
 
     // MARK: - Calendar Management
 
-    private func getOrCreateCalendar(for cat: ActivityCategory) -> EKCalendar? {
-        guard let name = calendarName[cat] else { return nil }
+    private func getOrCreateCalendar(for cat: ActivityCategory) throws -> EKCalendar {
+        let name = calendarTitle(for: cat)
 
-        // Return existing calendar if it already exists
+        // Reuse existing if already created
         if let existing = store.calendars(for: .event).first(where: { $0.title == name }) {
             return existing
         }
 
-        // Create a new calendar with the category color
+        // Pick source: defaultCalendarForNewEvents is always the most reliable choice
+        guard let source = store.defaultCalendarForNewEvents?.source
+                        ?? store.sources.first(where: { $0.sourceType == .local })
+                        ?? store.sources.first else {
+            // Last resort: just use the default calendar directly
+            if let def = store.defaultCalendarForNewEvents {
+                print("[Cal] no source found – using default calendar '\(def.title)'")
+                return def
+            }
+            throw CalError.noSource
+        }
+
         let cal = EKCalendar(for: .event, eventStore: store)
         cal.title   = name
-        cal.source  = bestSource()
-        if let color = calendarColor[cat] { cal.cgColor = color }
+        cal.source  = source
+        cal.cgColor = calendarColor(for: cat)
 
-        try? store.saveCalendar(cal, commit: true)
-        return cal
+        do {
+            try store.saveCalendar(cal, commit: true)
+            print("[Cal] created calendar '\(name)' in source '\(source.title)'")
+            return cal
+        } catch {
+            // Creation failed – fall back to the user's default calendar
+            print("[Cal] saveCalendar failed (\(error)) – using default calendar")
+            if let def = store.defaultCalendarForNewEvents { return def }
+            throw error
+        }
     }
 
-    /// Pick the best calendar source: prefer iCloud, fall back to local.
-    private func bestSource() -> EKSource? {
-        store.sources.first(where: { $0.sourceType == .calDAV && $0.title.lowercased().contains("icloud") })
-            ?? store.sources.first(where: { $0.sourceType == .calDAV })
-            ?? store.defaultCalendarForNewEvents?.source
+    // MARK: - Names & Colors
+
+    private func calendarTitle(for cat: ActivityCategory) -> String {
+        switch cat {
+        case .productive: return "TimeAudit – Umsatzgenerierend"
+        case .neutral:    return "TimeAudit – Neutral"
+        case .harmful:    return "TimeAudit – Schädlich"
+        }
+    }
+
+    private func calendarColor(for cat: ActivityCategory) -> CGColor {
+        switch cat {
+        case .productive: return CGColor(red: 0.13, green: 0.69, blue: 0.30, alpha: 1)
+        case .neutral:    return CGColor(red: 0.55, green: 0.55, blue: 0.55, alpha: 1)
+        case .harmful:    return CGColor(red: 0.90, green: 0.22, blue: 0.21, alpha: 1)
+        }
+    }
+
+    private enum CalError: Error {
+        case noSource
     }
 }
