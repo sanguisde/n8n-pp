@@ -11,6 +11,7 @@ struct SettingsView: View {
     let identityProvider: IdentityProvider
 
     @State private var backupMessage: String?
+    @State private var showResetTodayConfirmation: Bool = false
 
     var body: some View {
         Form {
@@ -87,6 +88,23 @@ struct SettingsView: View {
                     }
                 }
 
+                Button("Heutige Einträge zurücksetzen") {
+                    showResetTodayConfirmation = true
+                }
+                .foregroundStyle(.red)
+                .confirmationDialog(
+                    "Alle Einträge von heute löschen?",
+                    isPresented: $showResetTodayConfirmation,
+                    titleVisibility: .visible
+                ) {
+                    Button("Zurücksetzen", role: .destructive) {
+                        resetToday()
+                    }
+                    Button("Abbrechen", role: .cancel) {}
+                } message: {
+                    Text("Dieser Vorgang kann nicht rückgängig gemacht werden.")
+                }
+
                 if let msg = backupMessage {
                     Text(msg)
                         .font(.system(size: 11))
@@ -115,6 +133,16 @@ struct SettingsView: View {
     }
 
     // MARK: - Backup / Restore
+
+    private func resetToday() {
+        let descriptor = FetchDescriptor<TimeEntry>()
+        guard let entries = try? modelContext.fetch(descriptor) else { return }
+        let todayEntries = entries.filter { Calendar.current.isDateInToday($0.timestamp) }
+        for entry in todayEntries {
+            modelContext.delete(entry)
+        }
+        backupMessage = "\(todayEntries.count) Einträge gelöscht"
+    }
 
     private func backupDatabase() {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!

@@ -18,12 +18,12 @@ struct AchievementToastView: View {
         .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(ThemeColors.cardBackground)
+                .fill(Color.white)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(ThemeColors.accent.opacity(0.4), lineWidth: 1)
+                        .stroke(Color(red: 0.30, green: 0.40, blue: 0.95).opacity(0.3), lineWidth: 1)
                 )
-                .shadow(color: .black.opacity(0.4), radius: 8, y: 4)
+                .shadow(color: .black.opacity(0.18), radius: 12, y: 4)
         )
         .padding(.horizontal, 12)
     }
@@ -36,20 +36,20 @@ struct AchievementToastView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Level Up!")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(ThemeColors.accent)
+                    .foregroundStyle(Color(red: 0.30, green: 0.40, blue: 0.95))
                 Text("Du bist jetzt: \(gameVM.levelUpTitle)")
                     .font(.system(size: 11))
-                    .foregroundStyle(ThemeColors.textSecondary)
+                    .foregroundStyle(Color(red: 0.40, green: 0.40, blue: 0.50))
             }
 
             Spacer()
 
             Text("Lv. \(gameVM.playerProfile?.level ?? 1)")
                 .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(ThemeColors.accent)
+                .foregroundStyle(Color(red: 0.30, green: 0.40, blue: 0.95))
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
-                .background(ThemeColors.accent.opacity(0.15))
+                .background(Color(red: 0.30, green: 0.40, blue: 0.95).opacity(0.12))
                 .clipShape(Capsule())
         }
     }
@@ -65,7 +65,7 @@ struct AchievementToastView: View {
                     .foregroundStyle(Color.yellow)
                 Text(achievement.achievementDescription)
                     .font(.system(size: 10))
-                    .foregroundStyle(ThemeColors.textSecondary)
+                    .foregroundStyle(Color(red: 0.40, green: 0.40, blue: 0.50))
                     .lineLimit(1)
             }
 
@@ -74,7 +74,7 @@ struct AchievementToastView: View {
             VStack(alignment: .trailing, spacing: 1) {
                 Text("+\(achievement.xpReward) XP")
                     .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(ThemeColors.accent)
+                    .foregroundStyle(Color(red: 0.30, green: 0.40, blue: 0.95))
                 Text("+\(achievement.goldReward) 🪙")
                     .font(.system(size: 10))
                     .foregroundStyle(Color.yellow)

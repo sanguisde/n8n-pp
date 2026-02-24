@@ -3,7 +3,7 @@ import SwiftData
 
 // MARK: - Menu Bar View
 
-/// Main view shown in the MenuBarExtra popover. Displays today's summary with quick actions.
+/// Main view shown in the MenuBarExtra popover. Light design for readability.
 struct MenuBarView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \TimeEntry.timestamp, order: .reverse) private var allEntries: [TimeEntry]
@@ -17,9 +17,18 @@ struct MenuBarView: View {
     let onOpenStatistics: () -> Void
     let onOpenSettings: () -> Void
 
+    // Light theme colors
+    private let bg          = Color(red: 0.97, green: 0.97, blue: 0.99)
+    private let cardBg      = Color.white
+    private let border      = Color(red: 0.85, green: 0.85, blue: 0.92)
+    private let trackBg     = Color(red: 0.90, green: 0.90, blue: 0.94)
+    private let textPrimary = Color(red: 0.10, green: 0.10, blue: 0.15)
+    private let textSec     = Color(red: 0.40, green: 0.40, blue: 0.50)
+    private let textTer     = Color(red: 0.60, green: 0.60, blue: 0.68)
+    private let accent      = Color(red: 0.30, green: 0.40, blue: 0.95)
+
     private var todayEntries: [TimeEntry] {
-        let calendar = Calendar.current
-        return allEntries.filter { calendar.isDateInToday($0.timestamp) }
+        allEntries.filter { Calendar.current.isDateInToday($0.timestamp) }
     }
 
     private var goalMinutes: Int {
@@ -30,42 +39,25 @@ struct MenuBarView: View {
         ZStack(alignment: .top) {
             VStack(spacing: 0) {
                 headerSection
-
-                separator
-
+                divider
                 gardenAndScoreSection
-
-                separator
-
+                divider
                 rpgSection
-
-                separator
-
+                divider
                 todaySection
-
-                separator
-
+                divider
                 missionBarSection
-
-                separator
-
+                divider
                 insightsSection
-
-                separator
-
+                divider
                 actionsSection
             }
             .frame(width: 360)
-            .background(ThemeColors.background)
-            .preferredColorScheme(.dark)
-            .onAppear {
-                statsVM.refresh(entries: allEntries)
-            }
-            .onChange(of: allEntries.count) {
-                statsVM.refresh(entries: allEntries)
-            }
+            .background(bg)
+            .onAppear { statsVM.refresh(entries: allEntries) }
+            .onChange(of: allEntries.count) { statsVM.refresh(entries: allEntries) }
 
-            // Achievement / Level-up toast overlay
+            // Achievement / level-up toast
             if gameVM.recentUnlock != nil || gameVM.showLevelUp {
                 AchievementToastView(gameVM: gameVM)
                     .padding(.top, 8)
@@ -76,10 +68,8 @@ struct MenuBarView: View {
         }
     }
 
-    private var separator: some View {
-        Rectangle()
-            .fill(ThemeColors.subtleBorder)
-            .frame(height: 0.5)
+    private var divider: some View {
+        Rectangle().fill(border).frame(height: 0.5)
     }
 
     // MARK: - Header
@@ -89,28 +79,29 @@ struct MenuBarView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("TimeAudit")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(ThemeColors.textPrimary)
+                    .foregroundStyle(textPrimary)
                 Text(timerLabel)
                     .font(.system(size: 11))
-                    .foregroundStyle(ThemeColors.textSecondary)
+                    .foregroundStyle(textSec)
             }
             Spacer()
             FocusScoreView(score: statsVM.todayFocusScore, size: 44)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
+        .background(bg)
     }
 
     private var timerLabel: String {
         let min = timerVM.secondsRemaining / 60
         let sec = timerVM.secondsRemaining % 60
-        return "Naechstes Log in \(min):\(String(format: "%02d", sec))"
+        return "Nächstes Log in \(min):\(String(format: "%02d", sec))"
     }
 
     // MARK: - Garden & Score
 
     private var gardenAndScoreSection: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 14) {
             GardenView(
                 score: statsVM.todayFocusScore,
                 isFaithMode: identityProvider.mode == .faith,
@@ -120,22 +111,22 @@ struct MenuBarView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(identityProvider.scoreName)
                     .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(ThemeColors.textTertiary)
+                    .foregroundStyle(textTer)
                 Text("\(statsVM.todayFocusScore)")
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
                     .foregroundStyle(scoreColor)
-
                 DailyImpulseView(identityProvider: identityProvider, compact: true)
             }
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 8)
+        .padding(.vertical, 10)
+        .background(bg)
     }
 
     private var scoreColor: Color {
         let s = statsVM.todayFocusScore
-        if s >= 75 { return .green }
-        if s >= 50 { return ThemeColors.accent }
+        if s >= 75 { return Color(red: 0.1, green: 0.65, blue: 0.3) }
+        if s >= 50 { return accent }
         if s >= 25 { return .orange }
         return .red
     }
@@ -143,32 +134,29 @@ struct MenuBarView: View {
     // MARK: - RPG Section
 
     private var rpgSection: some View {
-        VStack(spacing: 6) {
-            HStack(spacing: 8) {
+        VStack(spacing: 7) {
+            HStack(spacing: 10) {
                 // Level badge
                 ZStack {
                     Circle()
-                        .fill(ThemeColors.accent.opacity(0.2))
-                        .frame(width: 32, height: 32)
+                        .fill(accent.opacity(0.12))
+                        .frame(width: 34, height: 34)
                     Text("\(gameVM.playerProfile?.level ?? 1)")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundStyle(ThemeColors.accent)
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(accent)
                 }
 
-                VStack(alignment: .leading, spacing: 2) {
-                    // Level title
+                VStack(alignment: .leading, spacing: 3) {
                     Text(gameVM.playerProfile?.currentLevelTitle ?? "Anfänger")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(ThemeColors.textPrimary)
-
-                    // XP progress bar
+                        .foregroundStyle(textPrimary)
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
                             RoundedRectangle(cornerRadius: 3)
-                                .fill(ThemeColors.elevatedBackground)
+                                .fill(trackBg)
                                 .frame(height: 5)
                             RoundedRectangle(cornerRadius: 3)
-                                .fill(ThemeColors.accent)
+                                .fill(accent)
                                 .frame(width: geo.size.width * CGFloat(gameVM.playerProfile?.levelProgress ?? 0), height: 5)
                         }
                     }
@@ -177,13 +165,12 @@ struct MenuBarView: View {
 
                 Spacer()
 
-                // Gold
                 HStack(spacing: 3) {
                     Text("🪙")
-                        .font(.system(size: 11))
+                        .font(.system(size: 12))
                     Text("\(gameVM.playerProfile?.gold ?? 0)")
-                        .font(.system(size: 11, weight: .medium, design: .monospaced))
-                        .foregroundStyle(Color.yellow)
+                        .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(Color(red: 0.7, green: 0.5, blue: 0.0))
                 }
             }
 
@@ -194,7 +181,7 @@ struct MenuBarView: View {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 3)
-                            .fill(ThemeColors.elevatedBackground)
+                            .fill(trackBg)
                             .frame(height: 4)
                         RoundedRectangle(cornerRadius: 3)
                             .fill(gameVM.energyColor)
@@ -204,12 +191,13 @@ struct MenuBarView: View {
                 .frame(height: 4)
                 Text("\(gameVM.playerProfile?.energy ?? 100)")
                     .font(.system(size: 10, design: .monospaced))
-                    .foregroundStyle(ThemeColors.textTertiary)
+                    .foregroundStyle(textTer)
                     .frame(width: 24, alignment: .trailing)
             }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
+        .background(bg)
     }
 
     // MARK: - Today Section
@@ -218,12 +206,12 @@ struct MenuBarView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Heute")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(ThemeColors.textSecondary)
+                .foregroundStyle(textSec)
 
             if statsVM.todayCategoryMinutes.isEmpty {
-                Text("Noch keine Eintraege")
+                Text("Noch keine Einträge")
                     .font(.system(size: 12))
-                    .foregroundStyle(ThemeColors.textTertiary)
+                    .foregroundStyle(textTer)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 8)
             } else {
@@ -234,29 +222,30 @@ struct MenuBarView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
+        .background(bg)
     }
 
     private func categoryRow(_ category: ActivityCategory, minutes: Int) -> some View {
         HStack(spacing: 8) {
             RoundedRectangle(cornerRadius: 3)
-                .fill(category.color.opacity(0.8))
-                .frame(width: CGFloat(min(120, max(8, Double(minutes) / Double(max(1, statsVM.todayTotalMinutes)) * 120))), height: 12)
+                .fill(category.color.opacity(0.7))
+                .frame(width: CGFloat(min(130, max(8, Double(minutes) / Double(max(1, statsVM.todayTotalMinutes)) * 130))), height: 11)
 
             Text(identityProvider.categoryName(for: category))
                 .font(.system(size: 11))
-                .foregroundStyle(ThemeColors.textPrimary)
+                .foregroundStyle(textPrimary)
                 .lineLimit(1)
 
             Spacer()
 
             Text(StatisticsViewModel.formatMinutes(minutes))
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .foregroundStyle(ThemeColors.textSecondary)
+                .foregroundStyle(textSec)
 
             Text("\(Int(statsVM.percentage(for: minutes)))%")
                 .font(.system(size: 10))
-                .foregroundStyle(ThemeColors.textTertiary)
-                .frame(width: 30, alignment: .trailing)
+                .foregroundStyle(textTer)
+                .frame(width: 32, alignment: .trailing)
         }
     }
 
@@ -283,10 +272,10 @@ struct MenuBarView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("vs. 7-Tage-Ø")
                     .font(.system(size: 9))
-                    .foregroundStyle(ThemeColors.textTertiary)
+                    .foregroundStyle(textTer)
                 Text("\(identityProvider.scoreName) \(statsVM.weeklyAverageFocusScore)")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(ThemeColors.textPrimary)
+                    .foregroundStyle(textPrimary)
             }
 
             Spacer()
@@ -300,48 +289,42 @@ struct MenuBarView: View {
                         .foregroundStyle(.green)
                     Text(StatisticsViewModel.formatHour(best))
                         .font(.system(size: 10, weight: .medium, design: .monospaced))
-                        .foregroundStyle(ThemeColors.textPrimary)
+                        .foregroundStyle(textPrimary)
                 }
             }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 6)
+        .background(bg)
     }
 
     // MARK: - Actions
 
     private var actionsSection: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 6) {
             HStack(spacing: 8) {
                 Button(action: onLogNow) {
-                    Label("Jetzt loggen", systemImage: "plus.circle")
-                        .font(.system(size: 12))
+                    Label("Jetzt loggen", systemImage: "plus.circle.fill")
+                        .font(.system(size: 12, weight: .medium))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 6)
-                        .background(ThemeColors.accent.opacity(0.2))
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(ThemeColors.accent.opacity(0.3), lineWidth: 0.5)
-                        )
+                        .padding(.vertical, 7)
+                        .background(accent)
+                        .clipShape(RoundedRectangle(cornerRadius: 7))
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(ThemeColors.accent)
+                .foregroundStyle(.white)
 
                 Button(action: onOpenStatistics) {
                     Label("Statistiken", systemImage: "chart.bar")
                         .font(.system(size: 12))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 6)
-                        .background(ThemeColors.cardBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(ThemeColors.subtleBorder, lineWidth: 0.5)
-                        )
+                        .padding(.vertical, 7)
+                        .background(cardBg)
+                        .clipShape(RoundedRectangle(cornerRadius: 7))
+                        .overlay(RoundedRectangle(cornerRadius: 7).stroke(border, lineWidth: 1))
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(ThemeColors.textPrimary)
+                .foregroundStyle(textPrimary)
             }
 
             HStack(spacing: 8) {
@@ -359,9 +342,10 @@ struct MenuBarView: View {
                 .keyboardShortcut("q")
             }
             .buttonStyle(.plain)
-            .foregroundStyle(ThemeColors.textTertiary)
+            .foregroundStyle(textTer)
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 8)
+        .padding(.vertical, 10)
+        .background(bg)
     }
 }
