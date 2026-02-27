@@ -14,7 +14,7 @@ struct FocusScoreView: View {
 
     private var scoreColor: Color {
         if score >= 75 { return .green }
-        if score >= 50 { return .blue }
+        if score >= 50 { return ThemeColors.accent }
         if score >= 25 { return .orange }
         return .red
     }
@@ -23,9 +23,9 @@ struct FocusScoreView: View {
         ZStack {
             // Background ring
             Circle()
-                .stroke(Color.white.opacity(0.1), lineWidth: size * 0.08)
+                .stroke(ThemeColors.subtleBorder, lineWidth: size * 0.08)
 
-            // Score ring
+            // Score ring with glow
             Circle()
                 .trim(from: 0, to: CGFloat(score) / 100.0)
                 .stroke(
@@ -33,17 +33,18 @@ struct FocusScoreView: View {
                     style: StrokeStyle(lineWidth: size * 0.08, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
+                .shadow(color: scoreColor.opacity(0.4), radius: 4)
                 .animation(.easeInOut(duration: 0.5), value: score)
 
             // Score text
             VStack(spacing: 0) {
                 Text("\(score)")
                     .font(.system(size: size * 0.32, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(ThemeColors.textPrimary)
                 if size >= 50 {
                     Text("Score")
                         .font(.system(size: size * 0.14))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(ThemeColors.textTertiary)
                 }
             }
         }

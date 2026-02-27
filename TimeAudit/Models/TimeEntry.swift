@@ -9,34 +9,29 @@ final class TimeEntry {
     /// When this entry was logged
     var timestamp: Date
 
-    /// The category name (matches ActivityCategory.rawValue)
-    var category: String
+    /// The category value (1 = productive, 2 = neutral, 3 = harmful)
+    var categoryValue: Int
 
-    /// Optional free-text note
-    var note: String?
-
-    /// Optional project tag for grouping
-    var project: String?
+    /// Mandatory free-text note describing what was done
+    var note: String
 
     /// Duration of the interval in minutes (15, 30, or 60)
     var intervalMinutes: Int
 
     init(
         timestamp: Date = .now,
-        category: String,
-        note: String? = nil,
-        project: String? = nil,
+        categoryValue: Int,
+        note: String,
         intervalMinutes: Int = 15
     ) {
         self.timestamp = timestamp
-        self.category = category
+        self.categoryValue = categoryValue
         self.note = note
-        self.project = project
         self.intervalMinutes = intervalMinutes
     }
 
     /// Convenience: get the ActivityCategory enum value
     var activityCategory: ActivityCategory? {
-        ActivityCategory(rawValue: category)
+        ActivityCategory(rawValue: categoryValue)
     }
 }

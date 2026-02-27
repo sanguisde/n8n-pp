@@ -3,47 +3,75 @@ import Charts
 
 // MARK: - Daily Overview View
 
-/// Shows today's time breakdown with horizontal bars and a focus score.
+/// Shows today's time breakdown with garden visualization, charts, and mission bar.
 struct DailyOverviewView: View {
     let statsVM: StatisticsViewModel
+    let identityProvider: IdentityProvider
+    let goalMinutes: Int
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Focus score header
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Heute")
-                        .font(.system(size: 18, weight: .bold))
-                    Text("Gesamt: \(StatisticsViewModel.formatMinutes(statsVM.todayTotalMinutes))")
-                        .font(.system(size: 13))
-                        .foregroundStyle(.secondary)
+            // Garden + Focus score header
+            HStack(spacing: 16) {
+                GardenView(
+                    score: statsVM.todayFocusScore,
+                    isFaithMode: identityProvider.mode == .faith,
+                    size: .large
+                )
+
+                VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Heute")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(ThemeColors.textPrimary)
+                        Text("Gesamt: \(StatisticsViewModel.formatMinutes(statsVM.todayTotalMinutes))")
+                            .font(.system(size: 13))
+                            .foregroundStyle(ThemeColors.textSecondary)
+                    }
+
+                    FocusScoreView(score: statsVM.todayFocusScore, size: 70)
+
+                    // Mission bar
+                    MissionBar(
+                        currentMinutes: statsVM.todayProductiveMinutes,
+                        goalMinutes: goalMinutes,
+                        label: identityProvider.missionBarLabel(
+                            units: statsVM.todayProductiveMinutes / 15,
+                            goal: goalMinutes / 15
+                        )
+                    )
                 }
-                Spacer()
-                FocusScoreView(score: statsVM.todayFocusScore, size: 70)
             }
+
+            // Daily impulse
+            DailyImpulseView(identityProvider: identityProvider)
 
             // Bar chart
             if !statsVM.todayCategoryMinutes.isEmpty {
                 Chart(statsVM.todayCategoryMinutes, id: \.category) { item in
                     BarMark(
                         x: .value("Minuten", item.minutes),
-                        y: .value("Kategorie", item.category.rawValue)
+                        y: .value("Kategorie", identityProvider.categoryName(for: item.category))
                     )
                     .foregroundStyle(item.category.color)
                     .annotation(position: .trailing) {
                         Text("\(StatisticsViewModel.formatMinutes(item.minutes)) (\(Int(statsVM.percentage(for: item.minutes)))%)")
                             .font(.system(size: 10))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(ThemeColors.textTertiary)
                     }
                 }
                 .chartYAxis {
-                    AxisMarks { value in
+                    AxisMarks { _ in
                         AxisValueLabel()
                             .font(.system(size: 10))
+                            .foregroundStyle(ThemeColors.textSecondary)
                     }
                 }
                 .chartXAxis(.hidden)
-                .frame(height: CGFloat(statsVM.todayCategoryMinutes.count * 36))
+                .chartPlotStyle { plotArea in
+                    plotArea.background(ThemeColors.cardBackground.opacity(0.3))
+                }
+                .frame(height: CGFloat(statsVM.todayCategoryMinutes.count * 44))
             } else {
                 ContentUnavailableView(
                     "Noch keine Daten",
@@ -54,12 +82,15 @@ struct DailyOverviewView: View {
 
             // Best/Worst hour
             if statsVM.bestHour != nil || statsVM.worstHour != nil {
-                Divider()
+                Rectangle()
+                    .fill(ThemeColors.subtleBorder)
+                    .frame(height: 0.5)
                 HStack(spacing: 24) {
                     if let best = statsVM.bestHour {
                         Label {
                             Text("Produktivste Stunde: \(StatisticsViewModel.formatHour(best))")
                                 .font(.system(size: 12))
+                                .foregroundStyle(ThemeColors.textPrimary)
                         } icon: {
                             Image(systemName: "arrow.up.circle.fill")
                                 .foregroundStyle(.green)
@@ -69,6 +100,7 @@ struct DailyOverviewView: View {
                         Label {
                             Text("Am wenigsten produktiv: \(StatisticsViewModel.formatHour(worst))")
                                 .font(.system(size: 12))
+                                .foregroundStyle(ThemeColors.textPrimary)
                         } icon: {
                             Image(systemName: "arrow.down.circle.fill")
                                 .foregroundStyle(.red)

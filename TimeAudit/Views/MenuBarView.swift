@@ -3,45 +3,75 @@ import SwiftData
 
 // MARK: - Menu Bar View
 
-/// Main view shown in the MenuBarExtra popover. Displays today's summary with quick actions.
+/// Main view shown in the MenuBarExtra popover. Light design for readability.
 struct MenuBarView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \TimeEntry.timestamp, order: .reverse) private var allEntries: [TimeEntry]
 
     @Bindable var statsVM: StatisticsViewModel
     @Bindable var timerVM: TimerViewModel
+    let identityProvider: IdentityProvider
+    let settingsVM: SettingsViewModel
+    let gameVM: GameViewModel
     let onLogNow: () -> Void
     let onOpenStatistics: () -> Void
     let onOpenSettings: () -> Void
 
+    // Light theme colors
+    private let bg          = Color(red: 0.97, green: 0.97, blue: 0.99)
+    private let cardBg      = Color.white
+    private let border      = Color(red: 0.85, green: 0.85, blue: 0.92)
+    private let trackBg     = Color(red: 0.90, green: 0.90, blue: 0.94)
+    private let textPrimary = Color(red: 0.10, green: 0.10, blue: 0.15)
+    private let textSec     = Color(red: 0.40, green: 0.40, blue: 0.50)
+    private let textTer     = Color(red: 0.60, green: 0.60, blue: 0.68)
+    private let accent      = Color(red: 0.30, green: 0.40, blue: 0.95)
+
+    private var todayEntries: [TimeEntry] {
+        allEntries.filter { Calendar.current.isDateInToday($0.timestamp) }
+    }
+
+    private var goalMinutes: Int {
+        settingsVM.useAdaptiveGoal ? statsVM.adaptiveGoalMinutes : settingsVM.dailyGoalMinutes
+    }
+
     var body: some View {
-        VStack(spacing: 0) {
-            // Header with score
-            headerSection
+        ZStack(alignment: .top) {
+            VStack(spacing: 0) {
+                headerSection
+                divider
+                gardenAndScoreSection
+                divider
+                rpgSection
+                divider
+                todaySection
+                divider
+                missionBarSection
+                divider
+                weeklyLeagueSection
+                divider
+                insightsSection
+                divider
+                actionsSection
+            }
+            .frame(width: 360)
+            .background(bg)
+            .onAppear { statsVM.refresh(entries: allEntries) }
+            .onChange(of: allEntries.count) { statsVM.refresh(entries: allEntries) }
 
-            Divider().background(Color.white.opacity(0.1))
-
-            // Today's breakdown
-            todaySection
-
-            Divider().background(Color.white.opacity(0.1))
-
-            // Insights row
-            insightsSection
-
-            Divider().background(Color.white.opacity(0.1))
-
-            // Action buttons
-            actionsSection
+            // Achievement / level-up toast
+            if gameVM.recentUnlock != nil || gameVM.showLevelUp {
+                AchievementToastView(gameVM: gameVM)
+                    .padding(.top, 8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .animation(.spring(response: 0.4), value: gameVM.recentUnlock?.achievementId)
+                    .animation(.spring(response: 0.4), value: gameVM.showLevelUp)
+            }
         }
-        .frame(width: 300)
-        .preferredColorScheme(.dark)
-        .onAppear {
-            statsVM.refresh(entries: allEntries)
-        }
-        .onChange(of: allEntries.count) {
-            statsVM.refresh(entries: allEntries)
-        }
+    }
+
+    private var divider: some View {
+        Rectangle().fill(border).frame(height: 0.5)
     }
 
     // MARK: - Header
@@ -51,21 +81,125 @@ struct MenuBarView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("TimeAudit")
                     .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(textPrimary)
                 Text(timerLabel)
                     .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(textSec)
             }
             Spacer()
             FocusScoreView(score: statsVM.todayFocusScore, size: 44)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
+        .background(bg)
     }
 
     private var timerLabel: String {
         let min = timerVM.secondsRemaining / 60
         let sec = timerVM.secondsRemaining % 60
-        return "Naechstes Log in \(min):\(String(format: "%02d", sec))"
+        return "Nächstes Log in \(min):\(String(format: "%02d", sec))"
+    }
+
+    // MARK: - Garden & Score
+
+    private var gardenAndScoreSection: some View {
+        HStack(spacing: 14) {
+            GardenView(
+                score: statsVM.todayFocusScore,
+                isFaithMode: identityProvider.mode == .faith,
+                size: .medium
+            )
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(identityProvider.scoreName)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(textTer)
+                Text("\(statsVM.todayFocusScore)")
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .foregroundStyle(scoreColor)
+                DailyImpulseView(identityProvider: identityProvider, compact: true)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(bg)
+    }
+
+    private var scoreColor: Color {
+        let s = statsVM.todayFocusScore
+        if s >= 75 { return Color(red: 0.1, green: 0.65, blue: 0.3) }
+        if s >= 50 { return accent }
+        if s >= 25 { return .orange }
+        return .red
+    }
+
+    // MARK: - RPG Section
+
+    private var rpgSection: some View {
+        VStack(spacing: 7) {
+            HStack(spacing: 10) {
+                // Level badge
+                ZStack {
+                    Circle()
+                        .fill(accent.opacity(0.12))
+                        .frame(width: 34, height: 34)
+                    Text("\(gameVM.playerProfile?.level ?? 1)")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(accent)
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(gameVM.playerProfile?.currentLevelTitle ?? "Anfänger")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(textPrimary)
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(trackBg)
+                                .frame(height: 5)
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(accent)
+                                .frame(width: geo.size.width * CGFloat(gameVM.playerProfile?.levelProgress ?? 0), height: 5)
+                        }
+                    }
+                    .frame(height: 5)
+                }
+
+                Spacer()
+
+                HStack(spacing: 3) {
+                    Text("🪙")
+                        .font(.system(size: 12))
+                    Text("\(gameVM.playerProfile?.gold ?? 0)")
+                        .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(Color(red: 0.7, green: 0.5, blue: 0.0))
+                }
+            }
+
+            // Energy bar
+            HStack(spacing: 6) {
+                Text("⚡")
+                    .font(.system(size: 10))
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(trackBg)
+                            .frame(height: 4)
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(gameVM.energyColor)
+                            .frame(width: geo.size.width * CGFloat(gameVM.playerProfile?.energy ?? 100) / 100.0, height: 4)
+                    }
+                }
+                .frame(height: 4)
+                Text("\(gameVM.playerProfile?.energy ?? 100)")
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(textTer)
+                    .frame(width: 24, alignment: .trailing)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(bg)
     }
 
     // MARK: - Today Section
@@ -74,105 +208,224 @@ struct MenuBarView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Heute")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(textSec)
 
             if statsVM.todayCategoryMinutes.isEmpty {
-                Text("Noch keine Eintraege")
+                Text("Noch keine Einträge")
                     .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(textTer)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 8)
             } else {
-                ForEach(statsVM.todayCategoryMinutes.prefix(6), id: \.category) { item in
+                ForEach(statsVM.todayCategoryMinutes, id: \.category) { item in
                     categoryRow(item.category, minutes: item.minutes)
                 }
+            }
 
-                if statsVM.todayCategoryMinutes.count > 6 {
-                    Text("+ \(statsVM.todayCategoryMinutes.count - 6) weitere")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
-                }
+            // Distraction Debt row
+            if gameVM.debtMinutes > 0 {
+                debtRow
             }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
+        .background(bg)
+    }
+
+    private var debtRow: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 10))
+                .foregroundStyle(.red)
+
+            Text("Schulden")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.red)
+
+            Spacer()
+
+            Text("\(gameVM.debtMinutes) min")
+                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                .foregroundStyle(.red)
+
+            Text("extra produktiv")
+                .font(.system(size: 10))
+                .foregroundStyle(textTer)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color.red.opacity(0.07))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.red.opacity(0.2), lineWidth: 0.5)
+                )
+        )
     }
 
     private func categoryRow(_ category: ActivityCategory, minutes: Int) -> some View {
         HStack(spacing: 8) {
-            // Color bar
-            RoundedRectangle(cornerRadius: 2)
-                .fill(category.color)
-                .frame(width: CGFloat(min(120, max(8, Double(minutes) / Double(max(1, statsVM.todayTotalMinutes)) * 120))), height: 12)
+            RoundedRectangle(cornerRadius: 3)
+                .fill(category.color.opacity(0.7))
+                .frame(width: CGFloat(min(130, max(8, Double(minutes) / Double(max(1, statsVM.todayTotalMinutes)) * 130))), height: 11)
 
-            Text(category.rawValue)
+            Text(identityProvider.categoryName(for: category))
                 .font(.system(size: 11))
+                .foregroundStyle(textPrimary)
                 .lineLimit(1)
 
             Spacer()
 
             Text(StatisticsViewModel.formatMinutes(minutes))
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(textSec)
 
             Text("\(Int(statsVM.percentage(for: minutes)))%")
                 .font(.system(size: 10))
-                .foregroundStyle(.secondary)
-                .frame(width: 30, alignment: .trailing)
+                .foregroundStyle(textTer)
+                .frame(width: 32, alignment: .trailing)
         }
+    }
+
+    // MARK: - Mission Bar
+
+    private var missionBarSection: some View {
+        MissionBar(
+            currentMinutes: statsVM.todayProductiveMinutes,
+            goalMinutes: goalMinutes,
+            label: identityProvider.missionBarLabel(
+                units: statsVM.todayProductiveMinutes / 15,
+                goal: goalMinutes / 15
+            ),
+            compact: true
+        )
+        .padding(.horizontal, 14)
+        .padding(.vertical, 6)
+    }
+
+    // MARK: - Weekly League
+
+    private var weeklyLeagueSection: some View {
+        let current = statsVM.currentWeekSummary
+        let last = statsVM.lastWeekSummary
+        let delta = current.focusScore - last.focusScore
+        let deltaColor: Color = delta >= 0 ? Color(red: 0.1, green: 0.65, blue: 0.3) : .red
+        let deltaSymbol = delta >= 0 ? "↑" : "↓"
+
+        return HStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("🏆 Weekly League")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(textSec)
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text("\(current.focusScore)")
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundStyle(scoreColor)
+                    Text("\(deltaSymbol)\(abs(delta))")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(deltaColor)
+                }
+                Text("vs. Vorwoche: \(last.focusScore)")
+                    .font(.system(size: 10))
+                    .foregroundStyle(textTer)
+            }
+
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("Produktiv")
+                    .font(.system(size: 9))
+                    .foregroundStyle(textTer)
+                Text(StatisticsViewModel.formatMinutes(current.productiveMinutes))
+                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(textPrimary)
+                if last.productiveMinutes > 0 {
+                    let prodDelta = current.productiveMinutes - last.productiveMinutes
+                    let prodSymbol = prodDelta >= 0 ? "+" : ""
+                    Text("\(prodSymbol)\(StatisticsViewModel.formatMinutes(prodDelta))")
+                        .font(.system(size: 9))
+                        .foregroundStyle(prodDelta >= 0 ? Color(red: 0.1, green: 0.65, blue: 0.3) : .red)
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(bg)
     }
 
     // MARK: - Insights
 
     private var insightsSection: some View {
-        HStack(spacing: 12) {
-            // Weekly comparison
-            VStack(alignment: .leading, spacing: 2) {
-                Text("vs. 7-Tage-Ø")
-                    .font(.system(size: 9))
-                    .foregroundStyle(.secondary)
-                Text("Score \(statsVM.weeklyAverageFocusScore)")
-                    .font(.system(size: 11, weight: .medium))
-            }
+        Group {
+            if !StatisticsViewModel.isWorkday() {
+                HStack {
+                    Text("🌴 Wochenende – kein Druck")
+                        .font(.system(size: 11))
+                        .foregroundStyle(textSec)
+                    Spacer()
+                }
+            } else {
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("vs. 7-Tage-Ø")
+                            .font(.system(size: 9))
+                            .foregroundStyle(textTer)
+                        Text("\(identityProvider.scoreName) \(statsVM.weeklyAverageFocusScore)")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(textPrimary)
+                    }
 
-            Spacer()
+                    Spacer()
 
-            // Streak
-            StreakBadge(days: statsVM.productiveStreak, label: "Produktiv")
+                    StreakBadge(days: statsVM.productiveStreak, label: "Produktiv")
 
-            // Best/Worst hour
-            if let best = statsVM.bestHour {
-                VStack(spacing: 1) {
-                    Text("Best")
-                        .font(.system(size: 8))
-                        .foregroundStyle(.green)
-                    Text(StatisticsViewModel.formatHour(best))
-                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    if let best = statsVM.bestHour {
+                        VStack(spacing: 1) {
+                            Text("Best")
+                                .font(.system(size: 8))
+                                .foregroundStyle(.green)
+                            Text(StatisticsViewModel.formatHour(best))
+                                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                                .foregroundStyle(textPrimary)
+                        }
+                    }
                 }
             }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 6)
+        .background(bg)
     }
 
     // MARK: - Actions
 
     private var actionsSection: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 6) {
             HStack(spacing: 8) {
                 Button(action: onLogNow) {
-                    Label("Jetzt loggen", systemImage: "plus.circle")
-                        .font(.system(size: 12))
+                    Label("Jetzt loggen", systemImage: "plus.circle.fill")
+                        .font(.system(size: 12, weight: .medium))
                         .frame(maxWidth: .infinity)
+                        .padding(.vertical, 7)
+                        .background(accent)
+                        .clipShape(RoundedRectangle(cornerRadius: 7))
                 }
+                .buttonStyle(.plain)
+                .foregroundStyle(.white)
 
                 Button(action: onOpenStatistics) {
                     Label("Statistiken", systemImage: "chart.bar")
                         .font(.system(size: 12))
                         .frame(maxWidth: .infinity)
+                        .padding(.vertical, 7)
+                        .background(cardBg)
+                        .clipShape(RoundedRectangle(cornerRadius: 7))
+                        .overlay(RoundedRectangle(cornerRadius: 7).stroke(border, lineWidth: 1))
                 }
+                .buttonStyle(.plain)
+                .foregroundStyle(textPrimary)
             }
-            .buttonStyle(.bordered)
 
             HStack(spacing: 8) {
                 Button(action: onOpenSettings) {
@@ -189,9 +442,10 @@ struct MenuBarView: View {
                 .keyboardShortcut("q")
             }
             .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(textTer)
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 8)
+        .padding(.vertical, 10)
+        .background(bg)
     }
 }

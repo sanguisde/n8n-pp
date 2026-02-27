@@ -23,8 +23,8 @@ final class StatisticsViewModel {
     /// Consecutive days with >= 4h productive work
     var productiveStreak: Int = 0
 
-    /// Consecutive days with 0 "Ablenkung" time
-    var noDistractionStreak: Int = 0
+    /// Consecutive days with 0 harmful time
+    var noHarmfulStreak: Int = 0
 
     // MARK: - Best/Worst Hour
 
@@ -33,6 +33,20 @@ final class StatisticsViewModel {
 
     /// Least productive hour of the day (0-23)
     var worstHour: Int?
+
+    // MARK: - Weekly League
+
+    struct WeeklySummary {
+        var focusScore: Int
+        var productiveMinutes: Int
+        var totalEntries: Int
+    }
+
+    /// Summary of the current 7 days
+    var currentWeekSummary: WeeklySummary = WeeklySummary(focusScore: 50, productiveMinutes: 0, totalEntries: 0)
+
+    /// Summary of the previous 7 days
+    var lastWeekSummary: WeeklySummary = WeeklySummary(focusScore: 50, productiveMinutes: 0, totalEntries: 0)
 
     // MARK: - Weekly Data
 
@@ -44,6 +58,14 @@ final class StatisticsViewModel {
     /// Heatmap: (weekday 0-6, hour 0-23, dominant category, total minutes)
     var heatmapData: [(weekday: Int, hour: Int, category: ActivityCategory?, minutes: Int)] = []
 
+    // MARK: - Mission Bar Data
+
+    /// Today's productive minutes (Category 1)
+    var todayProductiveMinutes: Int = 0
+
+    /// Adaptive goal: 7-day average productive minutes + 10%
+    var adaptiveGoalMinutes: Int = 240
+
     // MARK: - Computation
 
     /// Refresh all statistics from the given entries
@@ -53,6 +75,8 @@ final class StatisticsViewModel {
         computeStreaks(entries: entries)
         computeBestWorstHour(entries: entries)
         computeHeatmap(entries: entries)
+        computeMissionBar(entries: entries)
+        computeWeeklyLeague(entries: entries)
     }
 
     /// Compute today's category breakdown and focus score
@@ -62,7 +86,7 @@ final class StatisticsViewModel {
 
         var minutesByCategory: [ActivityCategory: Int] = [:]
         for entry in todayEntries {
-            if let cat = ActivityCategory(rawValue: entry.category) {
+            if let cat = ActivityCategory(rawValue: entry.categoryValue) {
                 minutesByCategory[cat, default: 0] += entry.intervalMinutes
             }
         }
@@ -84,7 +108,7 @@ final class StatisticsViewModel {
         var grouped: [Date: [ActivityCategory: Int]] = [:]
         for entry in weekEntries {
             let day = calendar.startOfDay(for: entry.timestamp)
-            if let cat = ActivityCategory(rawValue: entry.category) {
+            if let cat = ActivityCategory(rawValue: entry.categoryValue) {
                 grouped[day, default: [:]][cat, default: 0] += entry.intervalMinutes
             }
         }
@@ -98,7 +122,7 @@ final class StatisticsViewModel {
         weeklyAverageFocusScore = dailyScores.isEmpty ? 50 : dailyScores.reduce(0, +) / dailyScores.count
     }
 
-    /// Compute productive and no-distraction streaks
+    /// Compute productive and no-harmful streaks
     private func computeStreaks(entries: [TimeEntry]) {
         let calendar = Calendar.current
 
@@ -106,18 +130,25 @@ final class StatisticsViewModel {
         var dayData: [Date: [ActivityCategory: Int]] = [:]
         for entry in entries {
             let day = calendar.startOfDay(for: entry.timestamp)
-            if let cat = ActivityCategory(rawValue: entry.category) {
+            if let cat = ActivityCategory(rawValue: entry.categoryValue) {
                 dayData[day, default: [:]][cat, default: 0] += entry.intervalMinutes
             }
         }
 
-        let sortedDays = dayData.keys.sorted().reversed()
+        // Filter to workdays only (Mon–Fri) for streak calculation
+        let workdaysSorted = dayData.keys
+            .filter { day in
+                let wd = Calendar.current.component(.weekday, from: day)
+                return wd >= 2 && wd <= 6
+            }
+            .sorted()
+            .reversed()
 
-        // Productive streak: consecutive days with >= 240 min (4h) productive
+        // Productive streak: consecutive workdays with >= 240 min (4h) productive
         productiveStreak = 0
-        for day in sortedDays {
+        for day in workdaysSorted {
             let cats = dayData[day] ?? [:]
-            let productiveMinutes = cats.filter { $0.key.isProductive }.values.reduce(0, +)
+            let productiveMinutes = cats[.productive] ?? 0
             if productiveMinutes >= 240 {
                 productiveStreak += 1
             } else {
@@ -125,13 +156,13 @@ final class StatisticsViewModel {
             }
         }
 
-        // No distraction streak: consecutive days with 0 min Ablenkung
-        noDistractionStreak = 0
-        for day in sortedDays {
+        // No harmful streak: consecutive workdays with 0 min harmful
+        noHarmfulStreak = 0
+        for day in workdaysSorted {
             let cats = dayData[day] ?? [:]
-            let distractionMinutes = cats[.ablenkung] ?? 0
-            if distractionMinutes == 0 {
-                noDistractionStreak += 1
+            let harmfulMinutes = cats[.harmful] ?? 0
+            if harmfulMinutes == 0 {
+                noHarmfulStreak += 1
             } else {
                 break
             }
@@ -144,11 +175,10 @@ final class StatisticsViewModel {
         let weekAgo = calendar.date(byAdding: .day, value: -7, to: .now)!
         let weekEntries = entries.filter { $0.timestamp >= weekAgo }
 
-        // Group by hour: [hour: [weight * minutes]]
         var hourScores: [Int: (weightedSum: Double, totalMinutes: Int)] = [:]
         for entry in weekEntries {
             let hour = calendar.component(.hour, from: entry.timestamp)
-            let weight = ActivityCategory(rawValue: entry.category)?.productivityWeight ?? 0
+            let weight = ActivityCategory(rawValue: entry.categoryValue)?.productivityWeight ?? 0
             var data = hourScores[hour, default: (0, 0)]
             data.weightedSum += weight * Double(entry.intervalMinutes)
             data.totalMinutes += entry.intervalMinutes
@@ -170,12 +200,11 @@ final class StatisticsViewModel {
         let monthAgo = calendar.date(byAdding: .day, value: -28, to: .now)!
         let recentEntries = entries.filter { $0.timestamp >= monthAgo }
 
-        // Group by (weekday, hour) → [category: minutes]
         var grid: [Int: [Int: [ActivityCategory: Int]]] = [:]
         for entry in recentEntries {
-            let weekday = calendar.component(.weekday, from: entry.timestamp) - 1 // 0=Sun
+            let weekday = calendar.component(.weekday, from: entry.timestamp) - 1
             let hour = calendar.component(.hour, from: entry.timestamp)
-            if let cat = ActivityCategory(rawValue: entry.category) {
+            if let cat = ActivityCategory(rawValue: entry.categoryValue) {
                 grid[weekday, default: [:]][hour, default: [:]][cat, default: 0] += entry.intervalMinutes
             }
         }
@@ -189,6 +218,62 @@ final class StatisticsViewModel {
                 heatmapData.append((weekday: weekday, hour: hour, category: dominant, minutes: total))
             }
         }
+    }
+
+    // MARK: - Mission Bar
+
+    /// Compute today's productive minutes and adaptive goal
+    private func computeMissionBar(entries: [TimeEntry]) {
+        let calendar = Calendar.current
+        let todayEntries = entries.filter { calendar.isDateInToday($0.timestamp) }
+
+        todayProductiveMinutes = todayEntries
+            .filter { $0.activityCategory == .productive }
+            .reduce(0) { $0 + $1.intervalMinutes }
+
+        // Adaptive goal: 7-day average productive minutes + 10%
+        let weekAgo = calendar.date(byAdding: .day, value: -7, to: .now)!
+        let weekEntries = entries.filter { $0.timestamp >= weekAgo && $0.activityCategory == .productive }
+
+        var dailyProductive: [Date: Int] = [:]
+        for entry in weekEntries {
+            let day = calendar.startOfDay(for: entry.timestamp)
+            dailyProductive[day, default: 0] += entry.intervalMinutes
+        }
+
+        if !dailyProductive.isEmpty {
+            let avg = dailyProductive.values.reduce(0, +) / dailyProductive.count
+            adaptiveGoalMinutes = max(60, Int(Double(avg) * 1.1)) // At least 1 hour
+        } else {
+            adaptiveGoalMinutes = 240 // Default 4 hours
+        }
+    }
+
+    // MARK: - Weekly League
+
+    private func computeWeeklyLeague(entries: [TimeEntry]) {
+        let calendar = Calendar.current
+        let now = Date()
+        let sevenDaysAgo = calendar.date(byAdding: .day, value: -7, to: now)!
+        let fourteenDaysAgo = calendar.date(byAdding: .day, value: -14, to: now)!
+
+        let currentEntries = entries.filter { $0.timestamp >= sevenDaysAgo }
+        let lastEntries = entries.filter { $0.timestamp >= fourteenDaysAgo && $0.timestamp < sevenDaysAgo }
+
+        currentWeekSummary = buildSummary(from: currentEntries)
+        lastWeekSummary = buildSummary(from: lastEntries)
+    }
+
+    private func buildSummary(from entries: [TimeEntry]) -> WeeklySummary {
+        var byCategory: [ActivityCategory: Int] = [:]
+        for entry in entries {
+            if let cat = ActivityCategory(rawValue: entry.categoryValue) {
+                byCategory[cat, default: 0] += entry.intervalMinutes
+            }
+        }
+        let productive = byCategory[.productive] ?? 0
+        let score = calculateFocusScore(minutesByCategory: byCategory)
+        return WeeklySummary(focusScore: score, productiveMinutes: productive, totalEntries: entries.count)
     }
 
     // MARK: - Focus Score Calculation
@@ -207,9 +292,17 @@ final class StatisticsViewModel {
         return Int(max(0, min(100, normalized)))
     }
 
+    // MARK: - Weekend Logic
+
+    /// Returns true for Mon–Fri (weekday 2–6), false for Sat–Sun.
+    static func isWorkday(_ date: Date = Date()) -> Bool {
+        let wd = Calendar.current.component(.weekday, from: date)
+        return wd >= 2 && wd <= 6  // 1=Sun, 2=Mon, ..., 6=Fri, 7=Sat
+    }
+
     // MARK: - Formatting Helpers
 
-    /// Format minutes as "Xh YYm"
+    /// Format minutes as "H:MM"
     static func formatMinutes(_ minutes: Int) -> String {
         let h = minutes / 60
         let m = minutes % 60

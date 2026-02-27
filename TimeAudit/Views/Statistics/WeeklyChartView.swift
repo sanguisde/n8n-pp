@@ -7,13 +7,6 @@ import Charts
 struct WeeklyChartView: View {
     let statsVM: StatisticsViewModel
 
-    private var weekDayFormatter: DateFormatter {
-        let f = DateFormatter()
-        f.dateFormat = "E"
-        f.locale = Locale(identifier: "de_DE")
-        return f
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
@@ -38,7 +31,7 @@ struct WeeklyChartView: View {
                     .foregroundStyle(item.category.color)
                 }
                 .chartXAxis {
-                    AxisMarks(values: .stride(by: .day)) { value in
+                    AxisMarks(values: .stride(by: .day)) { _ in
                         AxisValueLabel(format: .dateTime.weekday(.abbreviated))
                     }
                 }
@@ -54,7 +47,7 @@ struct WeeklyChartView: View {
                     }
                 }
                 .chartForegroundStyleScale(
-                    domain: ActivityCategory.allCases.map(\.rawValue),
+                    domain: ActivityCategory.allCases.map(\.displayName),
                     range: ActivityCategory.allCases.map(\.color)
                 )
                 .frame(height: 200)
@@ -72,25 +65,22 @@ struct WeeklyChartView: View {
             // Streaks
             HStack(spacing: 16) {
                 StreakBadge(days: statsVM.productiveStreak, label: "Produktiv")
-                StreakBadge(days: statsVM.noDistractionStreak, label: "Fokussiert")
+                StreakBadge(days: statsVM.noHarmfulStreak, label: "Fokussiert")
             }
         }
         .padding(16)
     }
 
     private var legendView: some View {
-        LazyVGrid(columns: [
-            GridItem(.adaptive(minimum: 120))
-        ], spacing: 4) {
+        HStack(spacing: 16) {
             ForEach(ActivityCategory.allCases) { cat in
                 HStack(spacing: 4) {
                     Circle()
                         .fill(cat.color)
-                        .frame(width: 6, height: 6)
-                    Text(cat.rawValue)
-                        .font(.system(size: 9))
+                        .frame(width: 8, height: 8)
+                    Text(cat.displayName)
+                        .font(.system(size: 11))
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
                 }
             }
         }

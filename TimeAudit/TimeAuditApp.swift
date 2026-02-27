@@ -19,11 +19,14 @@ struct TimeAuditApp: App {
             MenuBarView(
                 statsVM: appDelegate.statsVM,
                 timerVM: appDelegate.timerVM,
+                identityProvider: appDelegate.identityProvider,
+                settingsVM: appDelegate.settingsVM,
+                gameVM: appDelegate.gameVM,
                 onLogNow: { appDelegate.showLoggingPanel() },
                 onOpenStatistics: { appDelegate.showStatisticsWindow() },
                 onOpenSettings: { appDelegate.showSettingsWindow() }
             )
-            .modelContainer(for: [TimeEntry.self, AppSettings.self])
+            .modelContainer(for: [TimeEntry.self, AppSettings.self, PlayerProfile.self, Achievement.self, DailyIntention.self])
             .onAppear {
                 observeTimerPopup()
             }
@@ -33,11 +36,10 @@ struct TimeAuditApp: App {
         .menuBarExtraStyle(.window)
     }
 
-    /// Menu bar icon: clock with colored dot indicating last category
+    /// Menu bar icon: garden icon with colored dot indicating health
     private var menuBarLabel: some View {
         HStack(spacing: 3) {
-            Image(systemName: "clock.fill")
-                .font(.system(size: 12))
+            GardenMenuBarIcon(score: appDelegate.statsVM.todayFocusScore)
 
             // Colored indicator dot for last logged category
             Circle()
@@ -46,11 +48,10 @@ struct TimeAuditApp: App {
         }
     }
 
-    /// Color based on the last logged category's productivity
+    /// Color based on the last logged category
     private var lastCategoryColor: Color {
-        // Read from UserDefaults for quick access (set by LoggingViewModel on save)
-        if let lastCat = UserDefaults.standard.string(forKey: "lastCategory"),
-           let category = ActivityCategory(rawValue: lastCat) {
+        let lastValue = UserDefaults.standard.integer(forKey: "lastCategoryValue")
+        if let category = ActivityCategory(rawValue: lastValue) {
             return category.indicatorColor
         }
         return .gray
@@ -58,7 +59,6 @@ struct TimeAuditApp: App {
 
     /// Observe timer to show popup when needed
     private func observeTimerPopup() {
-        // Check periodically if popup should be shown
         Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
             if appDelegate.timerVM.shouldShowPopup {
                 appDelegate.timerVM.shouldShowPopup = false

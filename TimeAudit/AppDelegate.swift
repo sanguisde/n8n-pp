@@ -4,10 +4,14 @@ import SwiftData
 
 // MARK: - App Delegate
 
-/// Manages the floating panel lifecycle, sleep/wake monitoring, and idle detection.
+/// Manages the floating panel lifecycle, sleep/wake monitoring, idle detection,
+/// and the IdentityMode/Intervention systems.
 final class AppDelegate: NSObject, NSApplicationDelegate {
     /// The floating logging popup panel
     private var loggingPanel: FloatingPanel<AnyView>?
+
+    /// The intervention popup panel
+    private var interventionPanel: FloatingPanel<AnyView>?
 
     /// Always-on-top desktop widget for quick logging
     private var widgetPanel: FloatingWidget?
@@ -23,22 +27,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let loggingVM = LoggingViewModel()
     let statsVM = StatisticsViewModel()
     let settingsVM = SettingsViewModel()
+    let interventionVM = InterventionViewModel()
+    let intentionVM = IntentionViewModel()
+
+    /// Identity provider for mode-dependent strings
+    let identityProvider = IdentityProvider()
+
+    /// RPG game state (XP, gold, level, achievements)
+    let gameVM = GameViewModel()
 
     /// SwiftData model container (shared)
     var modelContainer: ModelContainer?
 
+    /// Panels for morning/evening popups
+    private var morningPanel: FloatingPanel<AnyView>?
+    private var eveningPanel: FloatingPanel<AnyView>?
+    private var eveningTimer: Timer?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Setup SwiftData
-        do {
-            modelContainer = try ModelContainer(for: TimeEntry.self, AppSettings.self)
-        } catch {
-            fatalError("Failed to create ModelContainer: \(error)")
-        }
+        // Setup SwiftData – on schema migration failure, wipe the store and start fresh
+        modelContainer = Self.makeModelContainer()
 
         // Load settings
         if let context = modelContainer?.mainContext {
             settingsVM.load(context: context)
             timerVM.intervalMinutes = settingsVM.intervalMinutes
+            identityProvider.mode = settingsVM.identityMode
+
+            // Load intervention state from recent entries
+            let descriptor = FetchDescriptor<TimeEntry>(
+                sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+            )
+            if let entries = try? context.fetch(descriptor) {
+                interventionVM.loadFromEntries(entries)
+                statsVM.refresh(entries: entries)
+            }
+
+            // Initialize RPG system (creates PlayerProfile + achievements if needed)
+            gameVM.initializeIfNeeded(context: context)
         }
 
         // Start timer
@@ -53,6 +79,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         sleepWakeMonitor.start()
 
+        // Check morning intention popup (after 8:00 AM on first launch)
+        if let context = modelContainer?.mainContext {
+            intentionVM.checkMorning(context: context)
+            if intentionVM.shouldShowMorningPopup {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                    self?.showMorningIntentionPanel()
+                }
+            }
+        }
+
+        // Schedule evening debrief check (17:30)
+        startEveningTimer()
+
         // Show desktop widget if enabled
         if settingsVM.widgetEnabled {
             showWidget()
@@ -60,7 +99,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Register global keyboard shortcut (Cmd+Shift+T)
         NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            // Cmd+Shift+T
             if event.modifierFlags.contains([.command, .shift]) && event.keyCode == 17 {
                 DispatchQueue.main.async {
                     self?.showLoggingPanel()
@@ -80,12 +118,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Show the floating logging panel
+    private static func makeModelContainer() -> ModelContainer {
+        let schema = Schema([TimeEntry.self, AppSettings.self, PlayerProfile.self, Achievement.self, DailyIntention.self])
+        do {
+            return try ModelContainer(for: schema)
+        } catch {
+            // Migration failed (e.g. breaking schema change) – delete old store and recreate
+            let storeURL = URL.applicationSupportDirectory.appending(path: "default.store")
+            for ext in ["", "-shm", "-wal"] {
+                try? FileManager.default.removeItem(
+                    at: storeURL.deletingPathExtension().appendingPathExtension("store\(ext)")
+                )
+            }
+            do {
+                return try ModelContainer(for: schema)
+            } catch {
+                fatalError("Failed to create ModelContainer even after reset: \(error)")
+            }
+        }
+    }
+
+    /// Show the floating logging panel (or intervention if triggered)
     func showLoggingPanel() {
         guard let container = modelContainer else { return }
 
-        // Check idle state
-        loggingVM.setIdleDetected(idleDetector.isIdle)
+        // Check if intervention should be shown instead
+        if interventionVM.shouldShowIntervention {
+            showInterventionPanel()
+            return
+        }
 
         // Load recent entries for smart defaults
         let context = container.mainContext
@@ -116,15 +177,59 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         loggingPanel?.present()
     }
 
+    /// Show the intervention popup
+    private func showInterventionPanel() {
+        guard let container = modelContainer else { return }
+
+        if settingsVM.soundEnabled {
+            SoundPlayer.playSystemSound()
+        }
+
+        if interventionPanel == nil || !(interventionPanel?.isVisible ?? false) {
+            let view = InterventionView(
+                interventionVM: interventionVM,
+                identityProvider: identityProvider
+            ) { [weak self] in
+                self?.interventionPanel?.dismiss()
+                // After dismissing intervention, show normal logging panel
+                self?.showLoggingPanel()
+            }
+            .modelContainer(container)
+
+            interventionPanel = FloatingPanel(contentView: AnyView(view))
+        }
+
+        interventionPanel?.present()
+    }
+
     /// Called when user saves a log entry
     private func onLogSaved() {
         loggingPanel?.dismiss()
         timerVM.didLog()
 
-        // Refresh statistics
+        // Track for intervention logic
         if let context = modelContainer?.mainContext {
-            let descriptor = FetchDescriptor<TimeEntry>()
+            let descriptor = FetchDescriptor<TimeEntry>(
+                sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
+            )
             if let entries = try? context.fetch(descriptor) {
+                // Update intervention tracking + RPG engine
+                if let lastEntry = entries.first, let cat = lastEntry.activityCategory {
+                    interventionVM.recordCategory(cat)
+                    gameVM.processEntry(
+                        category: cat,
+                        minutes: lastEntry.intervalMinutes,
+                        allEntries: entries,
+                        context: context
+                    )
+
+                    // Calendar event for the new entry
+                    CalendarExporter.shared.createEvent(for: lastEntry)
+                }
+
+                // Regenerate Excel log
+                XLSXWriter.shared.export(entries: entries)
+
                 statsVM.refresh(entries: entries)
             }
         }
@@ -144,13 +249,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        let view = StatisticsView(statsVM: statsVM)
-            .modelContainer(container)
-            .preferredColorScheme(.dark)
+        let view = StatisticsView(
+            statsVM: statsVM,
+            identityProvider: identityProvider,
+            settingsVM: settingsVM,
+            gameVM: gameVM
+        )
+        .modelContainer(container)
+        .preferredColorScheme(.dark)
 
         let window = createStandardWindow(
             title: "TimeAudit - Statistiken",
-            size: NSSize(width: 500, height: 480),
+            size: NSSize(width: 560, height: 650),
             content: view
         )
         statisticsWindow = window
@@ -168,13 +278,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        let view = SettingsView(settingsVM: settingsVM)
-            .modelContainer(container)
-            .preferredColorScheme(.dark)
+        let view = SettingsView(
+            settingsVM: settingsVM,
+            identityProvider: identityProvider
+        )
+        .modelContainer(container)
+        .preferredColorScheme(.dark)
 
         let window = createStandardWindow(
             title: "TimeAudit - Einstellungen",
-            size: NSSize(width: 420, height: 500),
+            size: NSSize(width: 420, height: 550),
             content: view
         )
         settingsWindow = window
@@ -182,7 +295,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    /// Create a normal, interactive NSWindow with opaque background for standard views
+    /// Create a normal, interactive NSWindow
     private func createStandardWindow(title: String, size: NSSize, content: some View) -> NSWindow {
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: size),
@@ -211,7 +324,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let view = FloatingWidgetView(
             timerVM: timerVM,
             statsVM: statsVM,
-            settingsVM: settingsVM
+            settingsVM: settingsVM,
+            identityProvider: identityProvider,
+            gameVM: gameVM
         )
         .modelContainer(container)
 
@@ -228,5 +343,63 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         timerVM.stop()
         idleDetector.stopPolling()
         sleepWakeMonitor.stop()
+        eveningTimer?.invalidate()
+    }
+
+    // MARK: - Morning Intention Panel
+
+    func showMorningIntentionPanel() {
+        guard let container = modelContainer else { return }
+
+        if morningPanel == nil || !(morningPanel?.isVisible ?? false) {
+            let view = MorningIntentionView(
+                intentionVM: intentionVM
+            ) { [weak self] in
+                self?.morningPanel?.dismiss()
+            }
+            .modelContainer(container)
+
+            morningPanel = FloatingPanel(contentView: AnyView(view))
+        }
+        morningPanel?.present()
+    }
+
+    // MARK: - Evening Debrief Panel
+
+    private func startEveningTimer() {
+        // Check every minute if it's past 17:30
+        eveningTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            let calendar = Calendar.current
+            let now = Date()
+            let hour = calendar.component(.hour, from: now)
+            let minute = calendar.component(.minute, from: now)
+
+            guard hour == 17 && minute >= 30 else { return }
+
+            DispatchQueue.main.async {
+                guard let context = self.modelContainer?.mainContext else { return }
+                self.intentionVM.checkEvening(context: context)
+                if self.intentionVM.shouldShowEveningDebrief {
+                    self.showEveningDebriefPanel()
+                }
+            }
+        }
+    }
+
+    func showEveningDebriefPanel() {
+        guard let container = modelContainer else { return }
+
+        if eveningPanel == nil || !(eveningPanel?.isVisible ?? false) {
+            let view = EveningDebriefView(
+                intentionVM: intentionVM
+            ) { [weak self] in
+                self?.eveningPanel?.dismiss()
+            }
+            .modelContainer(container)
+
+            eveningPanel = FloatingPanel(contentView: AnyView(view))
+        }
+        eveningPanel?.present()
     }
 }

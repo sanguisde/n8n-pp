@@ -4,14 +4,15 @@ import SwiftUI
 // MARK: - Floating Widget
 
 /// A small, always-on-top desktop widget for quick time logging.
-/// Uses NSVisualEffectView for a translucent blur background.
+/// Stays floating above all windows. Becomes key when clicked so text
+/// fields receive keyboard input, but does not steal focus on show.
 /// Position is persisted across app launches via UserDefaults.
 final class FloatingWidget: NSPanel {
 
     init(contentView: some View) {
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 240, height: 150),
-            styleMask: [.nonactivatingPanel, .fullSizeContentView, .hudWindow],
+            contentRect: NSRect(x: 0, y: 0, width: 260, height: 200),
+            styleMask: [.fullSizeContentView],   // no .nonactivatingPanel → can become key
             backing: .buffered,
             defer: false
         )
@@ -29,9 +30,9 @@ final class FloatingWidget: NSPanel {
         isReleasedWhenClosed = false
         animationBehavior = .utilityWindow
 
-        // Build the content: blur background + SwiftUI view
+        // Blur background + SwiftUI content
         let blurView = NSVisualEffectView()
-        blurView.material = .hudWindow
+        blurView.material = .contentBackground   // light/neutral material
         blurView.blendingMode = .behindWindow
         blurView.state = .active
         blurView.wantsLayer = true
@@ -53,32 +54,36 @@ final class FloatingWidget: NSPanel {
 
         self.contentView = blurView
 
-        // Restore saved position or place in bottom-right
         restorePosition()
     }
 
-    /// Show the widget
+    /// NSPanel with .fullSizeContentView but without .nonactivatingPanel
+    /// must explicitly declare it can become key so text fields work.
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { false }   // don't replace the main window
+
+    /// Show without stealing focus from the currently active app.
     func present() {
+        // orderFront keeps the panel visible without activating the app.
+        // When the user clicks inside, canBecomeKey=true lets it receive keyboard events.
         orderFront(nil)
     }
 
-    /// Hide the widget (don't destroy)
+    /// Hide without destroying.
     func hideWidget() {
         orderOut(nil)
     }
 
     // MARK: - Position Persistence
 
-    /// Save position whenever the widget is moved
     override func mouseDragged(with event: NSEvent) {
         super.mouseDragged(with: event)
         savePosition()
     }
 
     private func savePosition() {
-        let origin = frame.origin
-        UserDefaults.standard.set(origin.x, forKey: "widgetPosX")
-        UserDefaults.standard.set(origin.y, forKey: "widgetPosY")
+        UserDefaults.standard.set(frame.origin.x, forKey: "widgetPosX")
+        UserDefaults.standard.set(frame.origin.y, forKey: "widgetPosY")
     }
 
     private func restorePosition() {
@@ -88,12 +93,10 @@ final class FloatingWidget: NSPanel {
         if x != 0 || y != 0 {
             setFrameOrigin(NSPoint(x: x, y: y))
         } else {
-            // Default: bottom-right of main screen
+            // Default: bottom-right corner of main screen
             if let screen = NSScreen.main {
-                let screenFrame = screen.visibleFrame
-                let widgetX = screenFrame.maxX - frame.width - 20
-                let widgetY = screenFrame.minY + 20
-                setFrameOrigin(NSPoint(x: widgetX, y: widgetY))
+                let f = screen.visibleFrame
+                setFrameOrigin(NSPoint(x: f.maxX - frame.width - 20, y: f.minY + 20))
             }
         }
     }

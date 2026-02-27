@@ -9,37 +9,33 @@ final class LoggingViewModel {
     /// Currently selected category
     var selectedCategory: ActivityCategory?
 
-    /// Optional note text
+    /// Mandatory note text
     var noteText: String = ""
-
-    /// Optional project tag
-    var projectText: String = ""
 
     /// Smart default suggestion based on recent entries
     var suggestedCategory: ActivityCategory?
 
-    /// Whether an idle state was detected (suggests Pause/Schlaf)
-    var idleDetected: Bool = false
-
     /// Last 3 logged categories for smart default calculation
     private var recentCategories: [ActivityCategory] = []
 
-    /// Save the current entry to SwiftData
+    /// Save the current entry to SwiftData. Note is mandatory.
     func saveEntry(context: ModelContext, intervalMinutes: Int) -> Bool {
         guard let category = selectedCategory else { return false }
+        let trimmedNote = noteText.trimmingCharacters(in: .whitespaces)
+        guard !trimmedNote.isEmpty else { return false }
 
         let entry = TimeEntry(
             timestamp: .now,
-            category: category.rawValue,
-            note: noteText.isEmpty ? nil : noteText,
-            project: projectText.isEmpty ? nil : projectText,
+            categoryValue: category.rawValue,
+            note: trimmedNote,
             intervalMinutes: intervalMinutes
         )
 
         context.insert(entry)
 
-        // Save last category for menu bar icon indicator
-        UserDefaults.standard.set(category.rawValue, forKey: "lastCategory")
+        // Save last category and note for menu bar icon indicator and repeat-last-entry
+        UserDefaults.standard.set(category.rawValue, forKey: "lastCategoryValue")
+        UserDefaults.standard.set(trimmedNote, forKey: "lastNoteText")
 
         // Update recent categories for smart defaults
         recentCategories.append(category)
@@ -57,18 +53,11 @@ final class LoggingViewModel {
     func reset() {
         selectedCategory = nil
         noteText = ""
-        projectText = ""
-        idleDetected = false
         updateSuggestion()
     }
 
     /// Update smart default suggestion
     func updateSuggestion() {
-        if idleDetected {
-            suggestedCategory = .pause
-            return
-        }
-
         // If last 3 categories are the same, suggest that category
         if recentCategories.count >= 3 {
             let last3 = Array(recentCategories.suffix(3))
@@ -81,17 +70,26 @@ final class LoggingViewModel {
         suggestedCategory = nil
     }
 
-    /// Set idle state and update suggestion
-    func setIdleDetected(_ idle: Bool) {
-        idleDetected = idle
-        updateSuggestion()
-    }
-
     /// Handle keyboard shortcut selection
     func selectByShortcut(_ key: String) {
         if let category = ActivityCategory.allCases.first(where: { $0.shortcutKey == key }) {
             selectedCategory = category
         }
+    }
+
+    /// Last saved entry (category + note) for the repeat-last-entry feature
+    var lastEntry: (category: ActivityCategory, note: String)? {
+        guard let note = UserDefaults.standard.string(forKey: "lastNoteText"), !note.isEmpty,
+              let rawVal = UserDefaults.standard.object(forKey: "lastCategoryValue") as? Int,
+              let cat = ActivityCategory(rawValue: rawVal) else { return nil }
+        return (cat, note)
+    }
+
+    /// Pre-fill note + category from the last saved entry
+    func repeatLastEntry() {
+        guard let last = lastEntry else { return }
+        noteText = last.note
+        selectedCategory = last.category
     }
 
     /// Load recent categories from existing entries
@@ -100,7 +98,7 @@ final class LoggingViewModel {
             .sorted(by: { $0.timestamp > $1.timestamp })
             .prefix(3)
             .reversed()
-            .compactMap { ActivityCategory(rawValue: $0.category) }
+            .compactMap { ActivityCategory(rawValue: $0.categoryValue) }
         updateSuggestion()
     }
 }

@@ -7,18 +7,17 @@ struct CSVExporter {
 
     /// Generate CSV string from time entries
     static func generateCSV(from entries: [TimeEntry]) -> String {
-        var csv = "Timestamp,Category,Project,Note,Interval (min)\n"
+        var csv = "Timestamp,Category,Note,Interval (min)\n"
 
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
 
         for entry in entries.sorted(by: { $0.timestamp < $1.timestamp }) {
             let ts = formatter.string(from: entry.timestamp)
-            let cat = escapeCSV(entry.category)
-            let proj = escapeCSV(entry.project ?? "")
-            let note = escapeCSV(entry.note ?? "")
+            let cat = escapeCSV(entry.activityCategory?.displayName ?? "Unbekannt")
+            let note = escapeCSV(entry.note)
             let interval = "\(entry.intervalMinutes)"
-            csv += "\(ts),\(cat),\(proj),\(note),\(interval)\n"
+            csv += "\(ts),\(cat),\(note),\(interval)\n"
         }
 
         return csv
